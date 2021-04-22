@@ -13,7 +13,7 @@ else()
     set(BOOST_PYTHON_COMPONENTS "")
 endif()
 
-
+ADD_DEFINITIONS(-DBOOST_LOG_DYN_LINK)
 find_package(Boost COMPONENTS log filesystem program_options ${BOOST_PYTHON_COMPONENTS} system REQUIRED)
 find_package(CSpice REQUIRED)
 
