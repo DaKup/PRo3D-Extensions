@@ -201,7 +201,7 @@ int Xyz2LatLonAlt(const char* pcPlanet, double dX, double dY, double dZ, double*
 
     // Compute flattening coefficient.
     double dRadiusEquat = adRadii[0];
-    double dRadiusPole = adRadii[2];
+    double dRadiusPole = dRadiusEquat; // use spherical Mars model instead of spheroid to be consistent with MCZ conventions
     double dFlattening = (dRadiusEquat - dRadiusPole) / dRadiusEquat;
 
     // Do the conversion.
@@ -236,7 +236,7 @@ int LatLonAlt2Xyz(const char* pcPlanet, double dLat, double dLon, double dAlt, d
 
     // Compute flattening coefficient.
     double dRadiusEquat = adRadii[0];
-    double dRadiusPole = adRadii[2];
+    double dRadiusPole = dRadiusEquat; // use spherical Mars model instead of spheroid to be consistent with MCZ conventions
     double dFlattening = (dRadiusEquat - dRadiusPole) / dRadiusEquat;
 
     // Do the conversion.
