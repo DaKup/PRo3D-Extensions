@@ -13,7 +13,8 @@ else()
     set(BOOST_PYTHON_COMPONENTS "")
 endif()
 
-
+#ADD_DEFINITIONS(-DBOOST_LOG_DYN_LINK)
+set(Boost_USE_STATIC_LIBS ON)
 find_package(Boost COMPONENTS log filesystem program_options ${BOOST_PYTHON_COMPONENTS} system REQUIRED)
 find_package(CSpice REQUIRED)
 
