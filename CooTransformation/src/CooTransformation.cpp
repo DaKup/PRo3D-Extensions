@@ -8,7 +8,7 @@
 #include <boost/log/utility/setup/file.hpp>
 #include <boost/log/utility/setup/common_attributes.hpp>
 
-#include <cspice/SpiceUsr.h>
+#include <SpiceUsr.h>
 
 
 namespace bfs = boost::filesystem;
