@@ -1,5 +1,5 @@
 #include <PyInstrumentPlatforms/InstrumentPlatformsPy.hpp>
 
-BOOST_PYTHON_MODULE(PyInstrumentPlatforms)
+PYBIND11_MODULE(PyInstrumentPlatforms, m)
 {
 }

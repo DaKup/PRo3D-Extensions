@@ -1,11 +1,12 @@
 #include <PyCooTransformation/CooTransformationPy.hpp>
 
-BOOST_PYTHON_MODULE(PyCooTransformation)
+PYBIND11_MODULE(PyCooTransformation, m)
 {
-    bp::def("GetDllVersion", GetDllVersion);
-    bp::def("Init", Init);
-    bp::def("DeInit", DeInit);
-    bp::def("Xyz2LatLonRad", PyXyz2LatLonRad);
-    bp::def("Xyz2LatLonAlt", PyXyz2LatLonAlt);
-    bp::def("LatLonAlt2Xyz", PyLatLonAlt2Xyz);
+    m.def("GetDllVersion", GetDllVersion);
+    m.def("Init", Init);
+    m.def("DeInit", DeInit);
+    m.def("Xyz2LatLonRad", PyXyz2LatLonRad);
+    m.def("Xyz2LatLonAlt", PyXyz2LatLonAlt);
+    m.def("LatLonAlt2Xyz", PyLatLonAlt2Xyz);
 }
+

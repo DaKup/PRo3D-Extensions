@@ -1,10 +1,10 @@
 #include <CooTransformation/CooTransformation.hpp>
 
-#include <boost/python.hpp>
+#include <pybind11/pybind11.h>
 
-namespace bp = boost::python;
+namespace py = pybind11;
 
-bp::tuple PyXyz2LatLonRad(double dX, double dY, double dZ)
+py::tuple PyXyz2LatLonRad(double dX, double dY, double dZ)
 {
     double dLat, dLon, dRad;
     int nRet = Xyz2LatLonRad(dX, dY, dZ, &dLat, &dLon, &dRad);
@@ -12,10 +12,10 @@ bp::tuple PyXyz2LatLonRad(double dX, double dY, double dZ)
     {
         throw nRet;
     }
-    return bp::make_tuple(dLat, dLon, dRad);
+    return py::make_tuple(dLat, dLon, dRad);
 }
 
-bp::tuple PyXyz2LatLonAlt(const char* pcPlanet, double dX, double dY, double dZ)
+py::tuple PyXyz2LatLonAlt(const char* pcPlanet, double dX, double dY, double dZ)
 {
     double dLat, dLon, dAlt;
     int nRet = Xyz2LatLonAlt(pcPlanet, dX, dY, dZ, &dLat, &dLon, &dAlt);
@@ -23,10 +23,10 @@ bp::tuple PyXyz2LatLonAlt(const char* pcPlanet, double dX, double dY, double dZ)
     {
         throw nRet;
     }
-    return bp::make_tuple(dLat, dLon, dAlt);
+    return py::make_tuple(dLat, dLon, dAlt);
 }
 
-bp::tuple PyLatLonAlt2Xyz(const char* pcPlanet, double dLat, double dLon, double dAlt)
+py::tuple PyLatLonAlt2Xyz(const char* pcPlanet, double dLat, double dLon, double dAlt)
 {
     double dX, dY, dZ;
     int nRet = LatLonAlt2Xyz(pcPlanet, dLat, dLon, dAlt, &dX, &dY, &dZ);
@@ -34,5 +34,5 @@ bp::tuple PyLatLonAlt2Xyz(const char* pcPlanet, double dLat, double dLon, double
     {
         throw nRet;
     }
-    return bp::make_tuple(dX, dY, dZ);
+    return py::make_tuple(dX, dY, dZ);
 }

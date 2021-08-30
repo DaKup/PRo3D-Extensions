@@ -1,6 +1,6 @@
 #include <InstrumentPlatforms/InstrumentPlatforms.hpp>
 
-#include <boost/python.hpp>
+#include <pybind11/pybind11.h>
 
-namespace bp = boost::python;
+namespace py = pybind11;
 

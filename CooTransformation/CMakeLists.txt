@@ -14,7 +14,8 @@ add_library(CooTransformation SHARED ${CooTransformation_SOURCES} ${CooTransform
 generate_export_header(CooTransformation PREFIX_NAME  JR_PRO3D_EXTENSIONS_ EXPORT_FILE_NAME CooTransformation/CooTransformationExport.hpp)
 target_include_directories(CooTransformation PUBLIC include ${CSPICE_INCLUDE_DIR})
 target_include_directories(CooTransformation PUBLIC include ${CMAKE_CURRENT_BINARY_DIR})
-target_link_libraries(CooTransformation PRIVATE Boost::filesystem Boost::log ${CSPICE_LIBRARY_RELEASE} ${Boost_LIBRARIES})
+target_link_libraries(CooTransformation PRIVATE ${CSPICE_LIBRARY_RELEASE})
+set_target_properties(CooTransformation PROPERTIES CXX_STANDARD 17)
 
 
 install(TARGETS CooTransformation   RUNTIME DESTINATION bin COMPONENT runtime

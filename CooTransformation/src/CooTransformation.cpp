@@ -1,21 +1,64 @@
 #include<CooTransformation/CooTransformation.hpp>
 
-#include <boost/filesystem.hpp>
-#include <boost/log/core.hpp>
-#include <boost/log/trivial.hpp>
-#include <boost/log/expressions.hpp>
-#include <boost/log/utility/setup/console.hpp>
-#include <boost/log/utility/setup/file.hpp>
-#include <boost/log/utility/setup/common_attributes.hpp>
+#include <filesystem>
+#include <iostream>
+#include <fstream>
+
+#include <ctime>
+#include <iomanip>
+
+//#include <boost/filesystem.hpp>
+//#include <boost/log/core.hpp>
+//#include <boost/log/trivial.hpp>
+//#include <boost/log/expressions.hpp>
+//#include <boost/log/utility/setup/console.hpp>
+//#include <boost/log/utility/setup/file.hpp>
+//#include <boost/log/utility/setup/common_attributes.hpp>
 
 #include <SpiceUsr.h>
 
 
-namespace bfs = boost::filesystem;
+namespace fs = std::filesystem;
+//namespace bfs = boost::filesystem;
+//
+//
+//static boost::shared_ptr< boost::log::sinks::synchronous_sink<boost::log::sinks::text_ostream_backend> > s_console_sink;
+//static boost::shared_ptr< boost::log::sinks::synchronous_sink<boost::log::sinks::text_file_backend> > s_file_sink;
 
+enum class LogType
+{
+    LOG,
+    DEBUG,
+    WARNING,
+    FATAL
+};
 
-static boost::shared_ptr< boost::log::sinks::synchronous_sink<boost::log::sinks::text_ostream_backend> > s_console_sink;
-static boost::shared_ptr< boost::log::sinks::synchronous_sink<boost::log::sinks::text_file_backend> > s_file_sink;
+static std::string LogTypeStr[] =
+{
+    "Log",
+    "Debug",
+    "Warning",
+    "Error"
+};
+
+static std::unique_ptr<std::ofstream> s_logfile;
+
+static void _Log(LogType eLogType, const std::string& rsMsg)
+{
+    std::string sMsg = std::string("[") + LogTypeStr[static_cast<int>(eLogType)] + "]: " + rsMsg;
+    std::cout << "CooTransformation: " << sMsg << std::endl;
+
+    if (s_logfile && s_logfile->is_open())
+    {
+        auto time = std::time(nullptr);
+        auto tm = *std::localtime(&time);
+        std::stringstream ss;
+        ss << std::put_time(&tm, "%Y-%m-%dT%H:%M:%S.%z%Z");
+        std::string timestamp = ss.str();
+
+        *s_logfile << "[" + timestamp + "] " << sMsg << std::endl;
+    }
+}
 
 
 bool _SpiceHasFailed()
@@ -65,87 +108,159 @@ unsigned int GetDllVersion()
     return 1u;
 }
 
+static int LoadSpiceKernel(const char* pcSpiceKernelPath)
+{
+    if (pcSpiceKernelPath)
+    {
+        furnsh_c(pcSpiceKernelPath);
+        if (_SpiceHasFailed())
+        {
+            char acSMsg[SPICE_ERROR_SMSGLN]; // short message
+            char acXMsg[SPICE_ERROR_XMSGLN]; // explanation of short message
+            getmsg_c("SHORT", SPICE_ERROR_SMSGLN, acSMsg);
+            getmsg_c("EXPLAIN", SPICE_ERROR_XMSGLN, acXMsg);
+            reset_c();
+            //BOOST_LOG_TRIVIAL(fatal) << "Could not initialize CSPICE (" << acSMsg << ": " << acXMsg << ")!";
+            //std::cout << "Could not initialize CSPICE: \"" << pcSpiceKernelPath << "\" (" << acSMsg << ": " << acXMsg << ")!";
+            _Log(LogType::FATAL, std::string("Could not initialize CSPICE: \"") + pcSpiceKernelPath + "\" (" + acSMsg + ": " + acXMsg + ")!");
+            return -1;
+        }
+        else
+        {
+            std::cout << "Loaded CSpice Kernel \"" << pcSpiceKernelPath << "\"" << std::endl;
+        }
+    }
+    return 0;
+}
+
 
 JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT
 int Init(const char* pcConfigDirectory, const char* pcLogDirectory)
 {
     DeInit();
-    std::string sLogFormat = "[%TimeStamp%][%Severity%]:  %Message%";
-    boost::log::register_simple_formatter_factory< boost::log::trivial::severity_level, char >("Severity");
-    boost::log::add_common_attributes();
+    //std::string sLogFormat = "[%TimeStamp%][%Severity%]:  %Message%";
+    //boost::log::register_simple_formatter_factory< boost::log::trivial::severity_level, char >("Severity");
+    //boost::log::add_common_attributes();
 
-    s_console_sink = boost::log::add_console_log(
-        std::clog,
-        boost::log::keywords::format = sLogFormat,
-        boost::log::keywords::auto_flush = true
-    );
+    //s_console_sink = boost::log::add_console_log(
+        //std::clog,
+        //boost::log::keywords::format = sLogFormat,
+        //boost::log::keywords::auto_flush = true
+    //);
 
-    BOOST_LOG_TRIVIAL(trace) << "Initialized console logger";
+    //BOOST_LOG_TRIVIAL(trace) << "Initialized console logger";
+    //std::cout << "Initialized console logger";
+    _Log(LogType::DEBUG, "Initialized console logger");
 
      if( pcLogDirectory )
      {
-         bfs::path oLogDir( pcLogDirectory );
+         fs::path oLogDir( pcLogDirectory );
          if( !oLogDir.empty() )
          {
              oLogDir = oLogDir.native();
-             if( !bfs::exists( oLogDir ) )
+             if( !fs::exists( oLogDir ) )
              {
-                 //BOOST_LOG_TRIVIAL(fatal) << "The given log directory " << pcLogDirectory << " doesn't exist";
-                 //return -2;
-                 s_file_sink = boost::log::add_file_log(
-                     boost::log::keywords::file_name = "CooTransformation.log",
-                     boost::log::keywords::format = sLogFormat,
-                     boost::log::keywords::auto_flush = true
-                 );
-                 BOOST_LOG_TRIVIAL(trace) << "Initialized file logger CooTransformation.log";
+                 ////BOOST_LOG_TRIVIAL(fatal) << "The given log directory " << pcLogDirectory << " doesn't exist";
+                 ////return -2;
+                 //// 
+                 //s_file_sink = boost::log::add_file_log(
+                 //    boost::log::keywords::file_name = "CooTransformation.log",
+                 //    boost::log::keywords::format = sLogFormat,
+                 //    boost::log::keywords::auto_flush = true
+                 //);
+                 s_logfile = std::make_unique<std::ofstream>(std::ofstream("CooTransformation.log", std::ios::out|std::ios::app));
+                 //BOOST_LOG_TRIVIAL(trace) << "Initialized file logger CooTransformation.log";
+                 _Log(LogType::DEBUG, "Initialized file logger CooTransformation.log");
              }
              else
              {
-                 s_file_sink = boost::log::add_file_log(
-                     boost::log::keywords::file_name = oLogDir.string() + "/CooTransformation.log",
-                     boost::log::keywords::format = sLogFormat,
-                     boost::log::keywords::auto_flush = true
-                 );
-                 BOOST_LOG_TRIVIAL(trace) << "Initialized file logger " << oLogDir.string() + "/CooTransformation.log";
+                 //s_file_sink = boost::log::add_file_log(
+                 //    boost::log::keywords::file_name = oLogDir.string() + "/CooTransformation.log",
+                 //    boost::log::keywords::format = sLogFormat,
+                 //    boost::log::keywords::auto_flush = true
+                 //);
+                 s_logfile = std::make_unique<std::ofstream>( std::ofstream(oLogDir.string() + "/CooTransformation.log", std::ios::out|std::ios::app));
+                 //BOOST_LOG_TRIVIAL(trace) << "Initialized file logger " << oLogDir.string() + "/CooTransformation.log";
+                 _Log(LogType::DEBUG, "Initialized file logger " + oLogDir.string() + "/CooTransformation.log");
              }
          }
      }
 
      if( !pcConfigDirectory || std::string( pcConfigDirectory ) == "" )
      {
-         BOOST_LOG_TRIVIAL(fatal) << "No pcConfigDirectory given";
+         //BOOST_LOG_TRIVIAL(fatal) << "No pcConfigDirectory given";
+         //std::cout << "No pcConfigDirectory given";
+         _Log(LogType::FATAL, "No pcConfigDirectory given");
          return -3;
      }
 
-    bfs::path oConfigPath(pcConfigDirectory);
+    fs::path oConfigPath(pcConfigDirectory);
     oConfigPath = oConfigPath.native();
-    if (!bfs::exists(oConfigPath))
+    if (!fs::is_directory(oConfigPath))
     {
-        BOOST_LOG_TRIVIAL(fatal) << "The given configuration directory " << oConfigPath.string() << " doesn't exist";
+        //BOOST_LOG_TRIVIAL(fatal) << "The given configuration directory " << oConfigPath.string() << " doesn't exist";
+        //std::cout << "The given configuration directory " << oConfigPath.string() << " doesn't exist";
+        _Log(LogType::FATAL, "The given configuration directory " + oConfigPath.string() + " doesn't exist");
         return -3;
     }
 
     // Initialize CSPICE
     std::string sSpiceVersion(tkvrsn_c("toolkit"));
-    BOOST_LOG_TRIVIAL(info) << "Initializing SPICE version '" << sSpiceVersion << "'.";
+    //BOOST_LOG_TRIVIAL(info) << "Initializing SPICE version '" << sSpiceVersion << "'.";
+    //std::cout << "Initializing SPICE version '" << sSpiceVersion << "'.";
+    _Log(LogType::LOG, "Initializing SPICE version '" + sSpiceVersion + "'.");
     // Set error handling system of CSPICE to continue if error occurs
     _SetSpiceErrorHandling("RETURN", "NULL", "SHORT");
     // TODO: Load all spice kernels in config directory!
-    bfs::path oConfigFile(oConfigPath);
-    oConfigFile /= "pck00010.tpc";
-    furnsh_c(oConfigFile.string().c_str());
-    if (_SpiceHasFailed())
+    fs::path oConfigFile(oConfigPath);
+
+
+
+    //furnsh_c(oConfigFile.string().c_str());
+    //if (_SpiceHasFailed())
+    //{
+    //    char acSMsg[SPICE_ERROR_SMSGLN]; // short message
+    //    char acXMsg[SPICE_ERROR_XMSGLN]; // explanation of short message
+    //    getmsg_c("SHORT", SPICE_ERROR_SMSGLN, acSMsg);
+    //    getmsg_c("EXPLAIN", SPICE_ERROR_XMSGLN, acXMsg);
+    //    reset_c();
+    //    //BOOST_LOG_TRIVIAL(fatal) << "Could not initialize CSPICE (" << acSMsg << ": " << acXMsg << ")!";
+    //    std::cout << "Could not initialize CSPICE (" << acSMsg << ": " << acXMsg << ")!";
+    //    return -1;
+    //}
+
+    auto oKernelList = std::ifstream(oConfigFile / "kernel_list.txt", std::ios::in);
+    if (oKernelList.is_open())
     {
-        char acSMsg[SPICE_ERROR_SMSGLN]; // short message
-        char acXMsg[SPICE_ERROR_XMSGLN]; // explanation of short message
-        getmsg_c("SHORT", SPICE_ERROR_SMSGLN, acSMsg);
-        getmsg_c("EXPLAIN", SPICE_ERROR_XMSGLN, acXMsg);
-        reset_c();
-        BOOST_LOG_TRIVIAL(fatal) << "Could not initialize CSPICE (" << acSMsg << ": " << acXMsg << ")!";
-        return -1;
+        std::string sLine;
+        while (std::getline(oKernelList, sLine))
+        {
+            if (sLine.empty()) continue;
+            if (sLine.rfind(";", 0) == 0) continue;
+            if (sLine.rfind("#", 0) == 0) continue;
+
+            auto oPath = fs::path(oConfigPath) / sLine;
+            std::string sPath = oPath.string();
+            int nRet = LoadSpiceKernel(sPath.c_str());
+            if (nRet != 0)
+            {
+                //return nRet;
+            }
+        }
     }
 
-    BOOST_LOG_TRIVIAL(info) << "Successfully loaded SPICE kernels from " << oConfigPath.string() << ".";
+    //oConfigFile /= "pck00010.tpc";
+    //int nRet = LoadSpiceKernel(oConfigFile.string().c_str());
+    //if (nRet != 0)
+    //{
+    //    return nRet;
+    //}
+
+
+
+    //BOOST_LOG_TRIVIAL(info) << "Successfully loaded SPICE kernels from " << oConfigPath.string() << ".";
+    //std::cout << "Successfully loaded SPICE kernels from " << oConfigPath.string() << ".";
+    _Log(LogType::LOG, "Successfully loaded SPICE kernels from " + oConfigPath.string() + ".");
     return 0;
 }
 
@@ -153,18 +268,28 @@ int Init(const char* pcConfigDirectory, const char* pcLogDirectory)
 JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT
 void DeInit()
 {
-    if (s_console_sink)
-    {
-        s_console_sink->flush();
-        boost::log::core::get()->remove_sink(s_console_sink);
-        s_console_sink.reset();
-    }
-    if (s_file_sink)
-    {
-        s_file_sink->flush();
-        boost::log::core::get()->remove_sink(s_file_sink);
-        s_file_sink.reset();
-    }
+    s_logfile.reset();
+    //if (s_logfile)
+    //{
+    //    if (s_logfile->is_open())
+    //    {
+    //        s_logfile->flush();
+    //        s_logfile->close();
+    //    }
+    //    s_logfile = nullptr;
+    //}
+    //if (s_console_sink)
+    //{
+    //    s_console_sink->flush();
+    //    boost::log::core::get()->remove_sink(s_console_sink);
+    //    s_console_sink.reset();
+    //}
+    //if (s_file_sink)
+    //{
+    //    s_file_sink->flush();
+    //    boost::log::core::get()->remove_sink(s_file_sink);
+    //    s_file_sink.reset();
+    //}
 }
 
 

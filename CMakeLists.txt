@@ -11,20 +11,17 @@ set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS 1)
 option(USE_PYTHON "Build with Python interface")
 
 if(USE_PYTHON)
-    find_package(Python3 COMPONENTS Development REQUIRED)
-    set(BOOST_PYTHON_COMPONENTS python39)
+    # find_package(Python3 COMPONENTS Development REQUIRED)
+    add_subdirectory(extern/pybind11)
+    # find_package(pybind11 CONFIG)
+    # set(BOOST_PYTHON_COMPONENTS python39)
 else()
-    set(BOOST_PYTHON_COMPONENTS "")
+    # set(BOOST_PYTHON_COMPONENTS "")
 endif()
-
-#ADD_DEFINITIONS(-DBOOST_LOG_DYN_LINK)
-
-# at least not ship boost...
-set(Boost_USE_STATIC_LIBS ON)
 
 
 # can we remove some of those?
-find_package(Boost COMPONENTS log filesystem program_options ${BOOST_PYTHON_COMPONENTS} system REQUIRED)
+# find_package(Boost COMPONENTS log filesystem program_options ${BOOST_PYTHON_COMPONENTS} system REQUIRED)
 find_package(CSpice REQUIRED)
 
 add_subdirectory(CooTransformation)

@@ -29,7 +29,7 @@ endif ( WIN32 )
 
 # target_link_libraries(PyCooTransformation PRIVATE CooTransformation Boost::filesystem Boost::log Boost::python39 optimized Python3::Python)
 target_include_directories(PyCooTransformation PRIVATE include ${CMAKE_CURRENT_BINARY_DIR} ${Python3_INCLUDE_DIR})
-target_link_libraries(PyCooTransformation PRIVATE CooTransformation Boost::filesystem Boost::log Boost::python39 ${Python3_LIBRARY_RELEASE})
+target_link_libraries(PyCooTransformation PRIVATE CooTransformation pybind11::module)
 
 # ADD_DEPENDENCIES( PyCooTransformation
     # )
