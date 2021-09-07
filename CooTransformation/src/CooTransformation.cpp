@@ -4,12 +4,17 @@
 #include <fstream>
 #include <ctime>
 #include <iomanip>
-#include <filesystem>
+#include <string>
+#include <sstream>
+#include <sys/stat.h>
+#include <sys/types.h>
+//#include <filesystem>
+
 
 #include <SpiceUsr.h>
 
 
-namespace fs = std::filesystem;
+//namespace fs = std::filesystem;
 
 enum class LogType
 {
@@ -92,12 +97,24 @@ static void _SetSpiceErrorHandling(const char* szAction, const char* szDevice, c
 }   // SetSpiceErrorHandling()
 
 
-
-static int _LoadSpiceKernel(const char* pcSpiceKernelPath)
+static bool _IsDir(const std::string& rsDir)
 {
-    if (pcSpiceKernelPath)
+    // to stay compatible with c++11 and not require boost
+
+    struct stat oStat;
+    if (!stat(rsDir.c_str(), &oStat) && oStat.st_mode & S_IFDIR)
     {
-        furnsh_c(pcSpiceKernelPath);
+        return true;
+    }
+    return false;
+}
+
+
+static int _LoadSpiceKernel(const std::string& pcSpiceKernelPath)
+{
+    if (!pcSpiceKernelPath.empty())
+    {
+        furnsh_c(pcSpiceKernelPath.c_str());
         if (_SpiceHasFailed())
         {
             char acSMsg[SPICE_ERROR_SMSGLN]; // short message
@@ -105,7 +122,7 @@ static int _LoadSpiceKernel(const char* pcSpiceKernelPath)
             getmsg_c("SHORT", SPICE_ERROR_SMSGLN, acSMsg);
             getmsg_c("EXPLAIN", SPICE_ERROR_XMSGLN, acXMsg);
             reset_c();
-            _Log(LogType::FATAL, std::string("Could not initialize CSPICE: \"") + pcSpiceKernelPath + "\" (" + acSMsg + ": " + acXMsg + ")!");
+            _Log(LogType::WARNING, "Could not load CSPICE: \"" + pcSpiceKernelPath + "\" (" + acSMsg + ": " + acXMsg + ")!");
             return -1;
         }
         else
@@ -115,6 +132,8 @@ static int _LoadSpiceKernel(const char* pcSpiceKernelPath)
     }
     return 0;
 }
+
+
 
 
 
@@ -134,34 +153,36 @@ int Init(const char* pcConfigDirectory, const char* pcLogDirectory)
 
      if( pcLogDirectory )
      {
-         fs::path oLogDir( pcLogDirectory );
+         std::string oLogDir = pcLogDirectory;
          if( !oLogDir.empty() )
          {
-             oLogDir = oLogDir.native();
-             if( !fs::exists( oLogDir ) )
+             if( _IsDir( oLogDir ) )
+             {
+                 s_logfile = std::make_unique<std::ofstream>( std::ofstream(oLogDir + "/CooTransformation.log", std::ios::out|std::ios::app));
+                 _Log(LogType::DEBUG, "Initialized file logger " + oLogDir + "/CooTransformation.log");
+             }
+             else
              {
                  s_logfile = std::make_unique<std::ofstream>(std::ofstream("CooTransformation.log", std::ios::out|std::ios::app));
                  _Log(LogType::DEBUG, "Initialized file logger ./CooTransformation.log");
              }
-             else
-             {
-                 s_logfile = std::make_unique<std::ofstream>( std::ofstream(oLogDir.string() + "/CooTransformation.log", std::ios::out|std::ios::app));
-                 _Log(LogType::DEBUG, "Initialized file logger " + oLogDir.string() + "/CooTransformation.log");
-             }
          }
      }
 
-     if( !pcConfigDirectory || std::string( pcConfigDirectory ) == "" )
+     if( !pcConfigDirectory || std::string( pcConfigDirectory ).empty() )
      {
          _Log(LogType::FATAL, "No pcConfigDirectory given");
          return -3;
      }
 
-    fs::path oConfigPath(pcConfigDirectory);
-    oConfigPath = oConfigPath.native();
-    if (!fs::is_directory(oConfigPath))
+     std::string oConfigPath = pcConfigDirectory;
+
+     if (oConfigPath.back() == '/' || oConfigPath.back() == '\\')
+         oConfigPath.pop_back();
+    
+    if (!_IsDir(oConfigPath))
     {
-        _Log(LogType::FATAL, "The given configuration directory " + oConfigPath.string() + " doesn't exist");
+        _Log(LogType::FATAL, "The given configuration directory " + oConfigPath + " doesn't exist");
         return -3;
     }
 
@@ -170,25 +191,10 @@ int Init(const char* pcConfigDirectory, const char* pcLogDirectory)
     _Log(LogType::LOG, "Initializing SPICE version '" + sSpiceVersion + "'.");
     // Set error handling system of CSPICE to continue if error occurs
     _SetSpiceErrorHandling("RETURN", "NULL", "SHORT");
-    // TODO: Load all spice kernels in config directory!
-    fs::path oConfigFile(oConfigPath);
 
 
-
-    //furnsh_c(oConfigFile.string().c_str());
-    //if (_SpiceHasFailed())
-    //{
-    //    char acSMsg[SPICE_ERROR_SMSGLN]; // short message
-    //    char acXMsg[SPICE_ERROR_XMSGLN]; // explanation of short message
-    //    getmsg_c("SHORT", SPICE_ERROR_SMSGLN, acSMsg);
-    //    getmsg_c("EXPLAIN", SPICE_ERROR_XMSGLN, acXMsg);
-    //    reset_c();
-    //    //BOOST_LOG_TRIVIAL(fatal) << "Could not initialize CSPICE (" << acSMsg << ": " << acXMsg << ")!";
-    //    std::cout << "Could not initialize CSPICE (" << acSMsg << ": " << acXMsg << ")!";
-    //    return -1;
-    //}
-
-    auto oKernelList = std::ifstream(oConfigFile / "kernel_list.txt", std::ios::in);
+    auto oKernelList = std::ifstream(oConfigPath + "/kernel_list.txt", std::ios::in);
+    int nKernelsLoaded = 0;
     if (oKernelList.is_open())
     {
         std::string sLine;
@@ -198,26 +204,35 @@ int Init(const char* pcConfigDirectory, const char* pcLogDirectory)
             if (sLine.rfind(";", 0) == 0) continue;
             if (sLine.rfind("#", 0) == 0) continue;
 
-            auto oPath = fs::path(oConfigPath) / sLine;
-            std::string sPath = oPath.string();
-            int nRet = _LoadSpiceKernel(sPath.c_str());
-            if (nRet != 0)
+            if (sLine.find(':') != std::string::npos || sLine.find('~') != std::string::npos)
             {
-                //return nRet;
+                // absolute path 
+            }
+            else
+            {
+                sLine = oConfigPath + "/" + sLine;
+            }
+
+            int nRet = _LoadSpiceKernel(sLine);
+            if (nRet == 0)
+            {
+                nKernelsLoaded++;
             }
         }
     }
+    else
+    {
+        _Log(LogType::FATAL, "Unable to read \"" + oConfigPath + "/kernel_list.txt\"");
+        return -1;
+    }
 
-    //oConfigFile /= "pck00010.tpc";
-    //int nRet = LoadSpiceKernel(oConfigFile.string().c_str());
-    //if (nRet != 0)
-    //{
-    //    return nRet;
-    //}
+    if (nKernelsLoaded == 0)
+    {
+        _Log(LogType::WARNING, "No kernels were successfully loaded from \"" + oConfigPath + "/kernel_list.txt\"");
+        return 0;
+    }
 
-
-
-    _Log(LogType::LOG, "Successfully loaded SPICE kernels from " + oConfigPath.string() + ".");
+    _Log(LogType::LOG, "Successfully loaded " + std::to_string(nKernelsLoaded) + " SPICE kernels from " + oConfigPath + "/kernel_list.txt" + ".");
     return 0;
 }
 
