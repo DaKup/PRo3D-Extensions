@@ -28,9 +28,3 @@ install(FILES ${CooTransformation_HEADERS} ${CMAKE_CURRENT_BINARY_DIR}/CooTransf
 add_executable(CooTransformationTest test/CooTransformationTest.cpp)
 target_link_libraries(CooTransformationTest PRIVATE CooTransformation)
 set_target_properties(CooTransformationTest PROPERTIES CXX_STANDARD 17)
-
-
-
-# if(USE_PYTHON)
-#     add_subdirectory(python)
-# endif()

@@ -5,7 +5,7 @@ https://github.com/vrvis/PRo3D
 ## Setup
 
 ```bash
-git clone https://github.com/DaKup/PRo3D-Extensions-Experimental.git
+git clone https://github.com/DaKup/PRo3D-Extensions.git
 ```
 
 - Download [Spice Library](https://naif.jpl.nasa.gov/naif/toolkit_C.html)
