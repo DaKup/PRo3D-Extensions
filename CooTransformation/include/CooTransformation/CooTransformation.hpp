@@ -5,30 +5,32 @@
 
 extern "C"
 {
-    /** GetDllVersion returns the version number of the DLL.
+    /**
+      * GetDllVersion returns the version number of the DLL.
       * This function can be called, before Init has been executed.
       * @returns dll version number.
       **/
     JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT
         unsigned int GetDllVersion();
 
-    // /** Init reads all configuration files in the given directory and initializes internal
-    //   * structures.
-    //   * After successful execution of Init, the library is ready to be used.
-    //   * @param[in] pcConfigDirectory: directory that contains the config files.
-    //   * @param[in] pcLogDirectory: directory for the log file.
-    //   * @returns error code.
-    //   **/
-    // JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT
-    //     int Init(const char* pcConfigDirectory, const char* pcLogDirectory);
-
     /** DeInit makes sure, that any remaining log messages in the buffer are written and all open files are closed.
       **/
     JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT
         void DeInit();
 
+    /**
+     * TODO: change log directory to a log file path
+     * Initializes console and/or file logging.
+     * 
+     * @param[in] bConsoleLog: if true, log to stdout
+     * @param[in] pcLogDir: optional path to a directory in which a CooTransformation.log file will be created
+     * @return JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT 
+     */
     JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT
-        int Init(bool bConsoleLog, const char* pcLogFile);
+        int Init(bool bConsoleLog, const char* pcLogDir); 
+
+    // JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT
+    //     int Init(bool bConsoleLog, const char* pcLogFile);
 
     JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT
         int AddSpiceKernel(const char* pcSpiceKernelFile);
@@ -62,8 +64,24 @@ extern "C"
     JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT
         int LatLonAlt2Xyz(const char* pcPlanet, double dLat, double dLon, double dAlt, double* pdX, double* pdY, double* pdZ);
 
-    /** TODO Description
-      **/
+    /**
+     * TODO: Add proper description.
+     * For more details see https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/cspice/spkezr_c.html
+     * 
+     * @param pcTargetBody 
+     * @param pcReferenceFrame 
+     * @param pcAberrationCorrection 
+     * @param pcObserverBody 
+     * @param dObserverTime 
+     * @param pdLightTime 
+     * @param pdPosX 
+     * @param pdPosY 
+     * @param pdPosZ 
+     * @param pdVelX 
+     * @param pdVelY 
+     * @param pdVelZ 
+     * @return  
+     */
     JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT
     int GetRelState(
         const char* pcTargetBody,
