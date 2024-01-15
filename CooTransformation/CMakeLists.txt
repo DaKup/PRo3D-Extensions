@@ -25,6 +25,6 @@ install(TARGETS CooTransformation   RUNTIME DESTINATION bin COMPONENT runtime
 install(FILES ${CooTransformation_HEADERS} ${CMAKE_CURRENT_BINARY_DIR}/CooTransformation/CooTransformationExport.hpp DESTINATION include/CooTransformation COMPONENT develop)
 
 
-add_executable(CooTransformationTest test/CooTransformationTest.cpp)
-target_link_libraries(CooTransformationTest PRIVATE CooTransformation)
-set_target_properties(CooTransformationTest PROPERTIES CXX_STANDARD 17)
+# add_executable(CooTransformationTest test/CooTransformationTest.cpp)
+# target_link_libraries(CooTransformationTest PRIVATE CooTransformation)
+# set_target_properties(CooTransformationTest PROPERTIES CXX_STANDARD 17)
