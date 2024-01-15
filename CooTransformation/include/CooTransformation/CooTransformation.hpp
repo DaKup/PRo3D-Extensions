@@ -12,20 +12,26 @@ extern "C"
     JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT
         unsigned int GetDllVersion();
 
-    /** Init reads all configuration files in the given directory and initializes internal
-      * structures.
-      * After successful execution of Init, the library is ready to be used.
-      * @param[in] pcConfigDirectory: directory that contains the config files.
-      * @param[in] pcLogDirectory: directory for the log file.
-      * @returns error code.
-      **/
-    JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT
-        int Init(const char* pcConfigDirectory, const char* pcLogDirectory);
+    // /** Init reads all configuration files in the given directory and initializes internal
+    //   * structures.
+    //   * After successful execution of Init, the library is ready to be used.
+    //   * @param[in] pcConfigDirectory: directory that contains the config files.
+    //   * @param[in] pcLogDirectory: directory for the log file.
+    //   * @returns error code.
+    //   **/
+    // JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT
+    //     int Init(const char* pcConfigDirectory, const char* pcLogDirectory);
 
     /** DeInit makes sure, that any remaining log messages in the buffer are written and all open files are closed.
       **/
     JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT
         void DeInit();
+
+    JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT
+        int Init(bool bConsoleLog, const char* pcLogFile);
+
+    JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT
+        int AddSpiceKernel(const char* pcSpiceKernelFile);
 
     /** Xyz2LatLonRad simply transforms planet-centered cartesian coordinates into spherical coordinates.
       * Before this function can be called, Init has to be executed.
@@ -55,6 +61,25 @@ extern "C"
       **/
     JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT
         int LatLonAlt2Xyz(const char* pcPlanet, double dLat, double dLon, double dAlt, double* pdX, double* pdY, double* pdZ);
+
+    /** TODO Description
+      **/
+    JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT
+    int GetRelState(
+        const char* pcTargetBody,
+        const char* pcReferenceFrame,
+        const char* pcAberrationCorrection,
+        const char* pcObserverBody,
+        double dObserverTime,
+        double* pdLightTime,
+        double* pdPosX,
+        double* pdPosY,
+        double* pdPosZ,
+        double* pdVelX,
+        double* pdVelY,
+        double* pdVelZ
+    );
+
 } // extern "C"
 
 #endif // JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_HPP

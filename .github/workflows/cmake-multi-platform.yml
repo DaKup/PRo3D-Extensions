@@ -1,0 +1,156 @@
+# This starter workflow is for a CMake project running on multiple platforms. There is a different starter workflow if you just want a single platform.
+# See: https://github.com/actions/starter-workflows/blob/main/ci/cmake-single-platform.yml
+name: CMake on multiple platforms
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    strategy:
+      # Set fail-fast to false to ensure that feedback is delivered for all matrix combinations. Consider changing this to true when your workflow is stable.
+      fail-fast: false
+
+      # Set up a matrix to run the following 3 configurations:
+      # 1. <Windows, Release, latest MSVC compiler toolchain on the default runner image, default generator>
+      # 2. <Linux, Release, latest GCC compiler toolchain on the default runner image, default generator>
+      # 3. <Linux, Release, latest Clang compiler toolchain on the default runner image, default generator>
+      #
+      # To add more build types (Release, Debug, RelWithDebInfo, etc.) customize the build_type list.
+      matrix:
+        # os: [ubuntu-latest, windows-latest, macos-latest]
+#        os: [ubuntu-latest, windows-latest]
+        os: [macos-latest, ubuntu-latest, windows-latest]
+        build_type: [Release]
+        # c_compiler: [gcc, clang, cl]
+        c_compiler: [gcc, cl, clang]
+        include:
+          - os: windows-latest
+            c_compiler: cl
+            cpp_compiler: cl
+            spice_dl_url: https://naif.jpl.nasa.gov/pub/naif/toolkit//C/PC_Windows_VisualC_64bit/packages/cspice.zip
+            spice_zip_filename: cspice.zip
+            spice_lib_filename: cspice.lib
+          - os: ubuntu-latest
+            c_compiler: gcc
+            cpp_compiler: g++
+            spice_dl_url: https://naif.jpl.nasa.gov/pub/naif/toolkit//C/PC_Linux_GCC_64bit/packages/cspice.tar.Z
+            spice_zip_filename: cspice.tar.Z
+            spice_lib_filename: cspice.a
+          - os: ubuntu-latest
+            c_compiler: clang
+            cpp_compiler: clang++
+            spice_dl_url: https://naif.jpl.nasa.gov/pub/naif/toolkit//C/PC_Linux_GCC_64bit/packages/cspice.tar.Z
+            spice_zip_filename: cspice.tar.Z
+            spice_lib_filename: cspice.a
+#          - os: macos-latest
+#            c_compiler: clang
+#            cpp_compiler: clang++
+#            # arch: arm64
+#            spice_dl_url: https://naif.jpl.nasa.gov/pub/naif/toolkit//C/MacM1_OSX_clang_64bit/packages/cspice.tar.Z
+#            spice_zip_filename: cspice.tar.Z
+#            spice_lib_filename: cspice.a
+          - os: macos-latest
+            c_compiler: gcc
+            cpp_compiler: g++
+            # arch: arm64
+            spice_dl_url: https://naif.jpl.nasa.gov/pub/naif/toolkit//C/MacIntel_OSX_AppleC_64bit/packages/cspice.tar.Z
+            spice_zip_filename: cspice.tar.Z
+            spice_lib_filename: cspice.a
+        exclude:
+          - os: windows-latest
+            c_compiler: gcc
+          - os: windows-latest
+            c_compiler: clang
+          - os: ubuntu-latest
+            c_compiler: cl
+          - os: macos-latest
+            c_compiler: cl
+          - os: macos-latest
+            c_compiler: clang
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - uses: actions/checkout@v3
+
+    # - name: Clone Spice Kernels
+    #   id: clone_spice_kernels
+    #   shell: bash
+    #   run: git clone --depth=1 "https://s2e2.cosmos.esa.int/bitbucket/scm/spice_kernels/hera.git" "${{ github.workspace }}/hera"
+
+    - name: Download Spice Lib
+      id: downloaded_files
+      shell: bash
+      run: curl -s ${{ matrix.spice_dl_url }} --output "${{ github.workspace }}/${{ matrix.spice_zip_filename }}"
+
+    - if: matrix.os == 'windows-latest'
+      run: unzip "${{ github.workspace }}/${{ matrix.spice_zip_filename }}" && rm "${{ github.workspace }}/${{ matrix.spice_zip_filename }}"
+
+    - if: matrix.os == 'ubuntu-latest'
+      run: tar -xf "${{ github.workspace }}/${{ matrix.spice_zip_filename }}" && rm "${{ github.workspace }}/${{ matrix.spice_zip_filename }}"
+    
+    - if: matrix.os == 'macos-latest'
+      run: tar -xf "${{ github.workspace }}/${{ matrix.spice_zip_filename }}" && rm "${{ github.workspace }}/${{ matrix.spice_zip_filename }}"
+
+    - name: Set reusable strings
+      # Turn repeated input strings (such as the build output directory) into step outputs. These step outputs can be used throughout the workflow file.
+      id: strings
+      shell: bash
+      run: |
+        echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
+
+
+    - name: Configure CMake
+      # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
+      # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
+      run: >
+        cmake -B ${{ steps.strings.outputs.build-output-dir }}
+        -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
+        -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
+        -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+        -DCMAKE_INSTALL_PREFIX="${{ github.workspace }}/install/${{ matrix.os }}-${{ matrix.cpp_compiler }}-${{ matrix.build_type }}"
+        -DCSPICE_INCLUDE_DIR="${{ github.workspace }}/cspice/include"
+        -DCSPICE_LIBRARY_RELEASE="${{ github.workspace }}/cspice/lib/${{ matrix.spice_lib_filename }}"
+        -S ${{ github.workspace }}
+
+    - name: CMake Build
+      # Build your program with the given configuration. Note that --config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
+      run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }} --target install
+
+#    # todo: upload build results
+#    - name: Publish
+#      uses: actions/upload-artifact@v4
+#      with:
+#        name: Release-Name
+#        path: Release-path
+
+    - name: 'Tar files'
+#      run: |
+#        cd "${{ github.workspace }}/install/"
+      run:
+        tar -cvf "${{ matrix.os }}-${{ matrix.cpp_compiler }}-${{ matrix.build_type }}.tar" "${{ github.workspace }}/install/${{ matrix.os }}-${{ matrix.cpp_compiler }}-${{ matrix.build_type }}"
+
+    - name: 'Upload Artifact'
+      uses: actions/upload-artifact@v4
+      with:
+        name: "${{ matrix.os }}-${{ matrix.cpp_compiler }}-${{ matrix.build_type }}"
+        path: "${{ matrix.os }}-${{ matrix.cpp_compiler }}-${{ matrix.build_type }}.tar"
+
+#    - name: Download
+#      uses: actions/download-artifact@v4
+#      with:
+
+#    - name: Upload to Release
+#      uses: meeDamian/github-release@2.0
+
+
+#    - name: Test
+#      working-directory: ${{ steps.strings.outputs.build-output-dir }}
+#      # Execute tests defined by the CMake configuration. Note that --build-config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
+#      # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
+#      # todo: clone a tiny spice kernel first and clone it only once not for every os/compiler
+#      run: ctest --build-config ${{ matrix.build_type }}

@@ -1,0 +1,58 @@
+{
+    "version": 6,
+    "cmakeMinimumRequired": {
+        "major": 3,
+        "minor": 23,
+        "patch": 0
+    },
+    "configurePresets": [
+        {
+            "name": "windows-configure",
+            "displayName": "Windows Configure",
+            "description": "Default build using MSVC generator",
+            "generator": "Visual Studio 17 2022",
+            "binaryDir": "${sourceDir}/build/windows",
+            "installDir": "${sourceDir}/install/windows",
+            "cacheVariables": {
+                "CSPICE_INCLUDE_DIR": {
+                    "type": "FILEPATH",
+                    "value": "${sourceDir}/cspice/include"
+                },
+                "CSPICE_LIBRARY_RELEASE": {
+                    "type": "FILEPATH",
+                    "value": "${sourceDir}/cspice/lib/cspice.lib"
+                }
+            }
+        },
+        {
+            "name": "linux-configure",
+            "displayName": "Linux Configure",
+            "description": "Using compilers: C = /usr/bin/gcc, CXX = /usr/bin/g++",
+            "binaryDir": "${sourceDir}/out/build/${presetName}",
+            "cacheVariables": {
+                "CMAKE_INSTALL_PREFIX": "${sourceDir}/out/install/${presetName}",
+                "CMAKE_C_COMPILER": "/usr/bin/gcc",
+                "CMAKE_CXX_COMPILER": "/usr/bin/g++",
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CSPICE_INCLUDE_DIR": {
+                    "type": "FILEPATH",
+                    "value": "${sourceDir}/cspice/include"
+                },
+                "CSPICE_LIBRARY_RELEASE": {
+                    "type": "FILEPATH",
+                    "value": "${sourceDir}/cspice/lib/cspice.a"
+                }
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "windows-build",
+            "configurePreset": "windows-configure"
+        },
+        {
+            "name": "linux-build",
+            "configurePreset": "linux-configure"
+        }
+    ]
+}
