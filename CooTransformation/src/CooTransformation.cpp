@@ -71,9 +71,9 @@ static bool SpiceHasFailed()
 
 static void SetSpiceErrorHandling(const char* szAction, const char* szDevice, const char* szFormat)
 {
-    SpiceChar szErrorAction[10];
-    SpiceChar szErrorDevice[10];
-    SpiceChar szErrorFormat[10];
+    SpiceChar szErrorAction[SPICE_ERROR_LMSGLN];
+    SpiceChar szErrorDevice[SPICE_ERROR_LMSGLN];
+    SpiceChar szErrorFormat[SPICE_ERROR_LMSGLN];
 
     strcpy(szErrorAction, szAction);
     strcpy(szErrorDevice, szDevice);
@@ -82,21 +82,21 @@ static void SetSpiceErrorHandling(const char* szAction, const char* szDevice, co
     // Set the default error action
     erract_c(
         "SET",      // In: Operation "SET" means "update the error response action to the value indicated by action."
-        10,         // In: Length of list for output
+        SPICE_ERROR_LMSGLN,         // In: Length of list for output
         szErrorAction    // In: The default error action 
     );
 
     // Retrieve or set the name of the current output device for error messages
     errdev_c(
         "SET",      // In: Operation "SET" means "set the name of the current error output device equal to the value of device."
-        10,         // In: Length of device for output
+        SPICE_ERROR_LMSGLN,         // In: Length of device for output
         szErrorDevice    // In: The device name. Screen or file name.
     );
 
     // Retrieve or set the list of error message items to be output when an error is detected
     errprt_c(
         "SET",      // In: Operation "SET" means "the following list specifies the default selection of error messages to be output."
-        10,         // In: Length of list for output
+        SPICE_ERROR_LMSGLN,         // In: Length of list for output
         szErrorFormat    // In: Error message format
     );
 }   // SetSpiceErrorHandling()
@@ -122,10 +122,10 @@ static int LoadSpiceKernel(const std::string& pcSpiceKernelPath)
         furnsh_c(pcSpiceKernelPath.c_str());
         if (SpiceHasFailed())
         {
-            char acSMsg[SPICE_ERROR_SMSGLN]; // short message
-            char acXMsg[SPICE_ERROR_XMSGLN]; // explanation of short message
-            getmsg_c("SHORT", SPICE_ERROR_SMSGLN, acSMsg);
-            getmsg_c("EXPLAIN", SPICE_ERROR_XMSGLN, acXMsg);
+            char acSMsg[SPICE_ERROR_LMSGLN]; // short message
+            char acXMsg[SPICE_ERROR_LMSGLN]; // explanation of short message
+            getmsg_c("SHORT", SPICE_ERROR_LMSGLN, acSMsg);
+            getmsg_c("EXPLAIN", SPICE_ERROR_LMSGLN, acXMsg);
             reset_c();
             Log(LogType::WARNING,
                 "Could not load CSPICE: \"" + pcSpiceKernelPath + "\" (" + acSMsg + ": " + acXMsg + ")!");
@@ -141,56 +141,112 @@ static int LoadSpiceKernel(const std::string& pcSpiceKernelPath)
 
 
 JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT
+int Str2Et( const std::string& rsTimestamp, double& rdEt )
+{
+    str2et_c( rsTimestamp.c_str(), &rdEt );
+    if( SpiceHasFailed() )
+    {
+        char acSMsg[SPICE_ERROR_LMSGLN]; // short message
+        char acXMsg[SPICE_ERROR_LMSGLN]; // explanation of short message
+        getmsg_c("SHORT", SPICE_ERROR_LMSGLN, acSMsg);
+        getmsg_c("EXPLAIN", SPICE_ERROR_LMSGLN, acXMsg);
+        reset_c();
+        Log(LogType::WARNING,
+            std::string("Str2Et() failed with error: \"") + acSMsg + "\": \"" + acXMsg + "\"");
+        return -1;
+    }
+
+    return 0;
+}
+
+
+JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT
 unsigned int GetDllVersion()
 {
     return 2u;
 }
 
 
+//JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT
+//int Init(bool bConsoleLog, const char* pcLogDirectory)
+//{
+//    DeInit();
+//    s_bLogConsole = bConsoleLog;
+//    
+//    // init log file
+//    if(pcLogDirectory)
+//    {
+//        std::string oLogDir = pcLogDirectory;
+//        if(!oLogDir.empty())
+//        {
+//            if(IsDir(oLogDir))
+//            {
+//                s_logfile = std::make_unique<std::ofstream>(std::ofstream(oLogDir + "/CooTransformation.log", std::ios::out|std::ios::app));
+//                if(s_logfile->is_open())
+//                {
+//                    // s_bLogConsole = true;
+//                    Log(LogType::DEBUG, "Initialized file logger \"" + oLogDir + "/CooTransformation.log\"");
+//                    // s_bLogConsole = bConsoleLog;
+//                }
+//                else
+//                {
+//                    // s_bLogConsole = true;
+//                    Log(LogType::WARNING, "Could not open log file \"" + oLogDir + "/CooTransformation.log\"!");
+//                    // s_bLogConsole = bConsoleLog;
+//                }
+//            }
+//            else
+//            {
+//                // s_bLogConsole = true;
+//                Log(LogType::WARNING, "Log directory \"" + oLogDir + "\" does not exist!");
+//                // s_bLogConsole = bConsoleLog;
+//            }
+//        }
+//    }
+//
+//    // Initialize CSPICE library
+//    std::string sSpiceVersion(tkvrsn_c("toolkit"));
+//    Log(LogType::LOG, "Initializing SPICE toolkit version '" + sSpiceVersion + "'.");
+//
+//    // Set error handling system of CSPICE to continue if error occurs
+//    SetSpiceErrorHandling("RETURN", "NULL", "SHORT");
+//    return 0;
+//}
+
+
 JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT
-int Init(bool bConsoleLog, const char* pcLogDirectory)
+int Init(bool bConsoleLog, const char* pcLogFile)
 {
     DeInit();
     s_bLogConsole = bConsoleLog;
-    
-    // init log file
-    if(pcLogDirectory)
+
+    if( pcLogFile != nullptr )
     {
-        std::string oLogDir = pcLogDirectory;
-        if(!oLogDir.empty())
+        std::string sLogFile = pcLogFile;
+        if(!sLogFile.empty())
         {
-            if(IsDir(oLogDir))
+            s_logfile = std::make_unique<std::ofstream>(std::ofstream(sLogFile, std::ios::out|std::ios::app));
+            if(s_logfile->is_open())
             {
-                s_logfile = std::make_unique<std::ofstream>(std::ofstream(oLogDir + "/CooTransformation.log", std::ios::out|std::ios::app));
-                if(s_logfile->is_open())
-                {
-                    // s_bLogConsole = true;
-                    Log(LogType::DEBUG, "Initialized file logger \"" + oLogDir + "/CooTransformation.log\"");
-                    // s_bLogConsole = bConsoleLog;
-                }
-                else
-                {
-                    // s_bLogConsole = true;
-                    Log(LogType::WARNING, "Could not open log file \"" + oLogDir + "/CooTransformation.log\"!");
-                    // s_bLogConsole = bConsoleLog;
-                }
+                Log(LogType::DEBUG, "Initialized log file \"" + sLogFile + "\"");
             }
             else
             {
-                // s_bLogConsole = true;
-                Log(LogType::WARNING, "Log directory \"" + oLogDir + "\" does not exist!");
-                // s_bLogConsole = bConsoleLog;
+                Log(LogType::WARNING, "Could not open log file \"" + sLogFile + "\"!");
             }
         }
     }
 
-    // Initialize CSPICE
+    // Initialize CSPICE library
     std::string sSpiceVersion(tkvrsn_c("toolkit"));
-    Log(LogType::LOG, "Initializing SPICE version '" + sSpiceVersion + "'.");
+    Log(LogType::LOG, "Initializing SPICE toolkit version '" + sSpiceVersion + "'.");
+
     // Set error handling system of CSPICE to continue if error occurs
-    SetSpiceErrorHandling("RETURN", "NULL", "SHORT");
+    SetSpiceErrorHandling("RETURN", "NULL", "SHORT, EXPLAIN");
     return 0;
 }
+
+
 
 JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT
 int AddSpiceKernel(const char* pcKernelPath)
@@ -295,14 +351,16 @@ int LatLonAlt2Xyz(const char* pcPlanet, double dLat, double dLon, double dAlt, d
     return 0;
 }
 
+
 JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT
 int GetRelState(
     const char* pcTargetBody,
-    const char* pcReferenceFrame,
-    const char* pcAberrationCorrection,
+    //const char* pcAberrationCorrection,
     const char* pcObserverBody,
-    double dObserverTime,
-    double* pdLightTime,
+    const char* pcObserverTime,
+    const char* pcOutputReferenceFrame,
+    //double dObserverTime,
+    //double* pdLightTime,
     double* pdPosX,
     double* pdPosY,
     double* pdPosZ,
@@ -315,20 +373,31 @@ int GetRelState(
     //    relative to an observing body, optionally corrected for light
     //    time (planetary aberration) and stellar aberration.
 
-    auto sAberrationCorrection = std::string{"NONE"};
-
-    if ( pcAberrationCorrection != nullptr )
+    double dObserverTime;
+    int ret_val = Str2Et( pcObserverTime, dObserverTime );
+    if(ret_val != 0)
     {
-        sAberrationCorrection = pcAberrationCorrection;
+        return ret_val;
     }
 
 
+
+    auto sAberrationCorrection = std::string{"NONE"};
+
+    //if ( pcAberrationCorrection != nullptr )
+    //{
+    //    sAberrationCorrection = pcAberrationCorrection;
+    //}
+
+
     SpiceDouble state[6] = {};
-    spkezr_c( pcTargetBody, dObserverTime, pcReferenceFrame, sAberrationCorrection.c_str(), pcObserverBody, state, pdLightTime );
-    if(SpiceHasFailed() )
+    //spkezr_c( pcTargetBody, dObserverTime, pcReferenceFrame, sAberrationCorrection.c_str(), pcObserverBody, state, pdLightTime );
+    double pdLightTime;
+    spkezr_c( pcTargetBody, dObserverTime, pcOutputReferenceFrame, sAberrationCorrection.c_str(), pcObserverBody, state, &pdLightTime );
+    if(SpiceHasFailed())
     {
         reset_c();
-        return -1;
+        return -2;
     }
 
     *pdPosX = state[0];
@@ -338,5 +407,30 @@ int GetRelState(
     *pdVelY = state[4];
     *pdVelZ = state[5];
 
+    return 0;
+}
+
+
+JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT
+int GetPositionTransformationMatrix(
+    const char* pcFrom,
+    const char* pcTo,
+    const char* pcDatetime,
+    double* pdRotationMatrix)
+{
+    double dEt;
+    int ret_val = Str2Et( pcDatetime, dEt );
+    if(ret_val != 0)
+    {
+        return ret_val;
+    }
+
+    double dTmp[3][3] = {
+        {pdRotationMatrix[0], pdRotationMatrix[1], pdRotationMatrix[2]},
+        {pdRotationMatrix[3], pdRotationMatrix[4], pdRotationMatrix[5]},
+        {pdRotationMatrix[6], pdRotationMatrix[7], pdRotationMatrix[8]},
+    };
+
+    pxform_c( pcFrom, pcTo, dEt, dTmp);
     return 0;
 }

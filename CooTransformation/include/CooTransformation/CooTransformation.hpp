@@ -5,32 +5,36 @@
 
 extern "C"
 {
+    ///**
+    //  * GetDllVersion returns the version number of the DLL.
+    //  * This function can be called, before Init has been executed.
+    //  * @returns dll version number.
+    //  **/
+    //JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT
+    //    unsigned int GetDllVersion();
+
     /**
-      * GetDllVersion returns the version number of the DLL.
-      * This function can be called, before Init has been executed.
-      * @returns dll version number.
-      **/
-    JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT
-        unsigned int GetDllVersion();
+     * TODO: change log directory to a log file path
+     * TODO: allow logging to stderr?
+     * Initializes console and/or file logging.
+     * 
+     * @param[in] bConsoleLog: if true, log to stdout
+     * @param[in] pcLogDir: optional path to a directory in which a CooTransformation.log file will be created
+     * @return error code 
+     */
+     JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT
+         int Init(bool bConsoleLog, const char* pcLogFile);
+
+     //JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT
+    //    int Init(bool bConsoleLog, const char* pcLogDir); 
+
+
 
     /** DeInit makes sure, that any remaining log messages in the buffer are written and all open files are closed.
       **/
     JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT
         void DeInit();
 
-    /**
-     * TODO: change log directory to a log file path
-     * Initializes console and/or file logging.
-     * 
-     * @param[in] bConsoleLog: if true, log to stdout
-     * @param[in] pcLogDir: optional path to a directory in which a CooTransformation.log file will be created
-     * @return JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT 
-     */
-    JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT
-        int Init(bool bConsoleLog, const char* pcLogDir); 
-
-    // JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT
-    //     int Init(bool bConsoleLog, const char* pcLogFile);
 
     JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT
         int AddSpiceKernel(const char* pcSpiceKernelFile);
@@ -80,16 +84,17 @@ extern "C"
      * @param pdVelX 
      * @param pdVelY 
      * @param pdVelZ 
-     * @return  
+     * @return error code
      */
     JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT
     int GetRelState(
         const char* pcTargetBody,
-        const char* pcReferenceFrame,
-        const char* pcAberrationCorrection,
+        //const char* pcAberrationCorrection,
         const char* pcObserverBody,
-        double dObserverTime,
-        double* pdLightTime,
+        const char* pcObserverDatetime,
+        const char* pcOutputReferenceFrame,
+        //double dObserverTime,
+        //double* pdLightTime,
         double* pdPosX,
         double* pdPosY,
         double* pdPosZ,
@@ -97,6 +102,17 @@ extern "C"
         double* pdVelY,
         double* pdVelZ
     );
+
+    // todo: https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/cspice/pxform_c.html
+    JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT
+    int GetPositionTransformationMatrix(
+        const char* pcFrom,
+        const char* pcTo,
+        const char* pcDatetime,
+        double* pdRotationMatrix
+    );
+
+    // todo: https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/cspice/str2et_c.html
 
 } // extern "C"
 
