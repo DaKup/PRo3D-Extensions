@@ -10,8 +10,8 @@ extern "C"
     //  * This function can be called, before Init has been executed.
     //  * @returns dll version number.
     //  **/
-    //JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT
-    //    unsigned int GetDllVersion();
+    JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT
+        unsigned int GetDllVersion();
 
     /**
      * TODO: change log directory to a log file path
@@ -23,7 +23,7 @@ extern "C"
      * @return error code 
      */
      JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT
-         int Init(bool bConsoleLog, const char* pcLogFile);
+         int Init(bool bConsoleLog, const char* pcLogFile, int nConsoleLogLevel, int nFileLogLevel );
 
      //JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT
     //    int Init(bool bConsoleLog, const char* pcLogDir); 
@@ -89,18 +89,15 @@ extern "C"
     JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT
     int GetRelState(
         const char* pcTargetBody,
+        const char* pcSunBody,
         //const char* pcAberrationCorrection,
         const char* pcObserverBody,
         const char* pcObserverDatetime,
         const char* pcOutputReferenceFrame,
         //double dObserverTime,
         //double* pdLightTime,
-        double* pdPosX,
-        double* pdPosY,
-        double* pdPosZ,
-        double* pdVelX,
-        double* pdVelY,
-        double* pdVelZ
+        double* pdPosVec,
+        double* pdRotMat
     );
 
     // todo: https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/cspice/pxform_c.html
@@ -109,10 +106,8 @@ extern "C"
         const char* pcFrom,
         const char* pcTo,
         const char* pcDatetime,
-        double* pdRotationMatrix
+        double* pdRotMat
     );
-
-    // todo: https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/cspice/str2et_c.html
 
 } // extern "C"
 

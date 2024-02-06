@@ -10,6 +10,10 @@
 #include <sys/types.h>
 #include <cstring>
 #include <memory>
+#include <array>
+#include <vector>
+#include <algorithm>
+#include <type_traits>
 // #include <filesystem>
 
 #include <SpiceUsr.h>
@@ -17,36 +21,43 @@
 
 // namespace fs = std::filesystem;
 
-enum LogType
+enum LogLevel
 {
-    LOG,
-    DEBUG,
+    ERROR,
     WARNING,
-    ERROR
+    INFO,
+    DEBUG,
+    TRACE
 };
 
-static std::string LogTypeStr[] =
+static std::string LogLevelStr[] =
 {
-    "Log",
-    "Debug",
+    "Error",
     "Warning",
-    "Error"
+    "Debug",
+    "Info",
+    "Trace"
 };
 
+static int s_nConsoleLogLevel = static_cast<int>(TRACE);
+static int s_nFileLogLevel = static_cast<int>(TRACE);
 static bool s_bLogConsole = true;
 static std::unique_ptr<std::ofstream> s_logfile;
 
 
 
-static void Log(LogType eLogType, const std::string& rsMsg)
+static void Log(LogLevel eLogType, const std::string& rsMsg)
 {
-    std::string sMsg = std::string("[") + LogTypeStr[static_cast<int>(eLogType)] + "]: " + rsMsg;
+    //std::cout << "Log() called with eLogType = " << std::to_string( static_cast<int>( eLogType ) ) << ", console log level = " << std::to_string( s_nConsoleLogLevel ) << std::endl;
 
-    if (s_bLogConsole)
+    std::string sMsg = std::string("[") + LogLevelStr[static_cast<int>(eLogType)] + "]: " + rsMsg;
+
+    if (s_bLogConsole && s_nConsoleLogLevel >= static_cast<int>(eLogType))
     {
-        std::cout << "CooTransformation: " << sMsg << std::endl;
+        //std::cout << "CooTransformation: " << sMsg << std::endl;
+        std::cerr << "CooTransformation: " << sMsg << std::endl;
     }
-    if (s_logfile && s_logfile->is_open())
+    if (s_logfile && s_logfile->is_open() && s_nFileLogLevel >= static_cast<int>(eLogType))
     {
         auto time = std::time(nullptr);
         auto tm = *std::localtime(&time);
@@ -55,6 +66,7 @@ static void Log(LogType eLogType, const std::string& rsMsg)
         std::string timestamp = ss.str();
 
         *s_logfile << "[" + timestamp + "] " << sMsg << std::endl;
+        s_logfile->flush();
     }
 }
 
@@ -117,6 +129,7 @@ static bool IsDir(const std::string& rsDir)
 
 static int LoadSpiceKernel(const std::string& pcSpiceKernelPath)
 {
+    Log(LogLevel::TRACE, "LoadSpiceKernel() called with spice kernel path = \"" + pcSpiceKernelPath + "\".");
     if (!pcSpiceKernelPath.empty())
     {
         furnsh_c(pcSpiceKernelPath.c_str());
@@ -127,13 +140,13 @@ static int LoadSpiceKernel(const std::string& pcSpiceKernelPath)
             getmsg_c("SHORT", SPICE_ERROR_LMSGLN, acSMsg);
             getmsg_c("EXPLAIN", SPICE_ERROR_LMSGLN, acXMsg);
             reset_c();
-            Log(LogType::WARNING,
+            Log(LogLevel::WARNING,
                 "Could not load CSPICE: \"" + pcSpiceKernelPath + "\" (" + acSMsg + ": " + acXMsg + ")!");
             return -1;
         }
         else
         {
-            Log(LogType::LOG, "Loaded CSpice Kernel \"" + pcSpiceKernelPath + "\"");
+            Log(LogLevel::INFO, "Loaded CSpice Kernel \"" + pcSpiceKernelPath + "\".");
         }
     }
     return 0;
@@ -143,6 +156,8 @@ static int LoadSpiceKernel(const std::string& pcSpiceKernelPath)
 JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT
 int Str2Et( const std::string& rsTimestamp, double& rdEt )
 {
+    Log(LogLevel::TRACE, "Str2Et() called with timestamp = \"" + rsTimestamp + "\".");
+
     str2et_c( rsTimestamp.c_str(), &rdEt );
     if( SpiceHasFailed() )
     {
@@ -151,11 +166,12 @@ int Str2Et( const std::string& rsTimestamp, double& rdEt )
         getmsg_c("SHORT", SPICE_ERROR_LMSGLN, acSMsg);
         getmsg_c("EXPLAIN", SPICE_ERROR_LMSGLN, acXMsg);
         reset_c();
-        Log(LogType::WARNING,
+        Log(LogLevel::WARNING,
             std::string("Str2Et() failed with error: \"") + acSMsg + "\": \"" + acXMsg + "\"");
         return -1;
     }
 
+    Log(LogLevel::TRACE, "Str2Et() finished with et = " + std::to_string( rdEt ));
     return 0;
 }
 
@@ -163,64 +179,42 @@ int Str2Et( const std::string& rsTimestamp, double& rdEt )
 JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT
 unsigned int GetDllVersion()
 {
-    return 2u;
+    Log(LogLevel::TRACE, "GetDllVersion() called.");
+    Log(LogLevel::TRACE, "GetDllVersion() finished.");
+    return 3;
 }
 
 
-//JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT
-//int Init(bool bConsoleLog, const char* pcLogDirectory)
-//{
-//    DeInit();
-//    s_bLogConsole = bConsoleLog;
-//    
-//    // init log file
-//    if(pcLogDirectory)
-//    {
-//        std::string oLogDir = pcLogDirectory;
-//        if(!oLogDir.empty())
-//        {
-//            if(IsDir(oLogDir))
-//            {
-//                s_logfile = std::make_unique<std::ofstream>(std::ofstream(oLogDir + "/CooTransformation.log", std::ios::out|std::ios::app));
-//                if(s_logfile->is_open())
-//                {
-//                    // s_bLogConsole = true;
-//                    Log(LogType::DEBUG, "Initialized file logger \"" + oLogDir + "/CooTransformation.log\"");
-//                    // s_bLogConsole = bConsoleLog;
-//                }
-//                else
-//                {
-//                    // s_bLogConsole = true;
-//                    Log(LogType::WARNING, "Could not open log file \"" + oLogDir + "/CooTransformation.log\"!");
-//                    // s_bLogConsole = bConsoleLog;
-//                }
-//            }
-//            else
-//            {
-//                // s_bLogConsole = true;
-//                Log(LogType::WARNING, "Log directory \"" + oLogDir + "\" does not exist!");
-//                // s_bLogConsole = bConsoleLog;
-//            }
-//        }
-//    }
-//
-//    // Initialize CSPICE library
-//    std::string sSpiceVersion(tkvrsn_c("toolkit"));
-//    Log(LogType::LOG, "Initializing SPICE toolkit version '" + sSpiceVersion + "'.");
-//
-//    // Set error handling system of CSPICE to continue if error occurs
-//    SetSpiceErrorHandling("RETURN", "NULL", "SHORT");
-//    return 0;
-//}
-
-
 JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT
-int Init(bool bConsoleLog, const char* pcLogFile)
+int Init(bool bConsoleLog, const char* pcLogFile, int nConsoleLogLevel, int nFileLogLevel)
 {
+    Log(LogLevel::TRACE, "Init() called.");
     DeInit();
-    s_bLogConsole = bConsoleLog;
 
-    if( pcLogFile != nullptr )
+    // temporarily enable logging:
+    s_nConsoleLogLevel = static_cast<int>(TRACE);
+    s_nFileLogLevel = static_cast<int>(TRACE);
+    s_bLogConsole = true;
+
+    // clamp log levels:
+    nConsoleLogLevel = std::clamp( nConsoleLogLevel, -1, static_cast<int>(LogLevel::TRACE));
+    nFileLogLevel = std::clamp( nConsoleLogLevel, -1, static_cast<int>(LogLevel::TRACE));
+
+    if ( nConsoleLogLevel >= 0 )
+    {
+        Log(LogLevel::TRACE, "Console log level set to \"" + LogLevelStr[nConsoleLogLevel] + "\"." );
+    }
+    else
+    {
+        s_bLogConsole = false;
+    }
+
+    s_bLogConsole = bConsoleLog;
+    s_nConsoleLogLevel = nConsoleLogLevel;
+    s_nFileLogLevel = nFileLogLevel;
+
+
+    if( pcLogFile )
     {
         std::string sLogFile = pcLogFile;
         if(!sLogFile.empty())
@@ -228,18 +222,18 @@ int Init(bool bConsoleLog, const char* pcLogFile)
             s_logfile = std::make_unique<std::ofstream>(std::ofstream(sLogFile, std::ios::out|std::ios::app));
             if(s_logfile->is_open())
             {
-                Log(LogType::DEBUG, "Initialized log file \"" + sLogFile + "\"");
+                Log(LogLevel::DEBUG, "Initialized log file: \"" + sLogFile + "\"");
             }
             else
             {
-                Log(LogType::WARNING, "Could not open log file \"" + sLogFile + "\"!");
+                Log(LogLevel::WARNING, "Could not open log file: \"" + sLogFile + "\"!");
             }
         }
     }
 
     // Initialize CSPICE library
     std::string sSpiceVersion(tkvrsn_c("toolkit"));
-    Log(LogType::LOG, "Initializing SPICE toolkit version '" + sSpiceVersion + "'.");
+    Log(LogLevel::INFO, "Initializing SPICE toolkit version '" + sSpiceVersion + "'.");
 
     // Set error handling system of CSPICE to continue if error occurs
     SetSpiceErrorHandling("RETURN", "NULL", "SHORT, EXPLAIN");
@@ -265,6 +259,8 @@ void DeInit()
 JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT
 int Xyz2LatLonRad(double dX, double dY, double dZ, double* pdLat, double* pdLon, double* pdRad)
 {
+    Log(LogLevel::TRACE, "Xyz2LatLonRad() called with xyz = (" + std::to_string(dX) + ", " + std::to_string(dY) + ", " + std::to_string(dZ) + ")");
+    
     double adXyz[3] = { dX * 0.001, dY * 0.001, dZ * 0.001 };
     reclat_c(adXyz, pdRad, pdLon, pdLat);
     if (SpiceHasFailed())
@@ -276,6 +272,9 @@ int Xyz2LatLonRad(double dX, double dY, double dZ, double* pdLat, double* pdLon,
     *pdLon /= rpd_c();
     *pdLat /= rpd_c();
     *pdRad *= 1000.0;
+
+    Log(LogLevel::TRACE, "Xyz2LatLonRad() finished with lat, lon, rad = (" + std::to_string(*pdLat) + ", " + std::to_string(*pdLon) + ", " + std::to_string(*pdRad) + ")");
+
     return 0;
 }
 
@@ -283,6 +282,8 @@ int Xyz2LatLonRad(double dX, double dY, double dZ, double* pdLat, double* pdLon,
 JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT
 int Xyz2LatLonAlt(const char* pcPlanet, double dX, double dY, double dZ, double* pdLat, double* pdLon, double* pdAlt)
 {
+    Log(LogLevel::TRACE, "Xyz2LatLonAlt() called with planet = " + std::string{pcPlanet} + ", xyz = (" + std::to_string(dX) + ", " + std::to_string(dY) + ", " + std::to_string(dZ) + ")");
+
     // Look up the radii for the planet. Although we omit it here, we could first call badkpv_c
     // to make sure the variable BODY?99_RADII has three elements and numeric data type.
     // If the variable is not present in the kernel pool, bodvrd_c will signal an error.
@@ -312,6 +313,9 @@ int Xyz2LatLonAlt(const char* pcPlanet, double dX, double dY, double dZ, double*
     *pdLon /= rpd_c();
     *pdLat /= rpd_c();
     *pdAlt *= 1000.0;
+
+    Log(LogLevel::TRACE, "Xyz2LatLonAlt() finished with lat, lon, alt = (" + std::to_string(*pdLat) + ", " + std::to_string(*pdLon) + ", " + std::to_string(*pdAlt) + ")");
+
     return 0;
 }
 
@@ -319,6 +323,7 @@ int Xyz2LatLonAlt(const char* pcPlanet, double dX, double dY, double dZ, double*
 JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT
 int LatLonAlt2Xyz(const char* pcPlanet, double dLat, double dLon, double dAlt, double* pdX, double* pdY, double* pdZ)
 {
+    Log(LogLevel::TRACE, "LatLonAlt2Xyz() called with planet = " + std::string{pcPlanet} + ", xyz = (" + std::to_string(dLat) + ", " + std::to_string(dLon) + ", " + std::to_string(dAlt) + ")");
     // Look up the radii for the planet. Although we omit it here, we could first call badkpv_c
     // to make sure the variable BODY?99_RADII has three elements and numeric data type.
     // If the variable is not present in the kernel pool, bodvrd_c will signal an error.
@@ -348,6 +353,8 @@ int LatLonAlt2Xyz(const char* pcPlanet, double dLat, double dLon, double dAlt, d
     *pdX = adXyz[0] * 1000.0;
     *pdY = adXyz[1] * 1000.0;
     *pdZ = adXyz[2] * 1000.0;
+
+    Log(LogLevel::TRACE, "LatLonAlt2Xyz() finished with xyz = (" + std::to_string(*pdX) + ", " + std::to_string(*pdY) + ", " + std::to_string(*pdZ) + ")");
     return 0;
 }
 
@@ -355,57 +362,169 @@ int LatLonAlt2Xyz(const char* pcPlanet, double dLat, double dLon, double dAlt, d
 JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT
 int GetRelState(
     const char* pcTargetBody,
+    const char* pcSupportBody,
     //const char* pcAberrationCorrection,
     const char* pcObserverBody,
     const char* pcObserverTime,
     const char* pcOutputReferenceFrame,
     //double dObserverTime,
     //double* pdLightTime,
-    double* pdPosX,
-    double* pdPosY,
-    double* pdPosZ,
-    double* pdVelX,
-    double* pdVelY,
-    double* pdVelZ
+    //double* pdPosX,
+    //double* pdPosY,
+    //double* pdPosZ,
+    double* pdPosVec,
+    //double* pdVelX,
+    //double* pdVelY,
+    //double* pdVelZ
+    double* pdRotMat
 )
 {
+    Log(LogLevel::TRACE, std::string{"GetRelState() called with "} +
+        "target body = \"" + std::string{pcTargetBody} + "\" " +
+        "support body = \"" + std::string{pcSupportBody} + "\" " +
+        "observer body = \"" + std::string{pcObserverBody} + "\" " +
+        "observer time = \"" + std::string{pcObserverTime} + "\" " +
+        "reference frame = \"" + std::string{pcOutputReferenceFrame} + "\"."
+    );
+
     //Return the state (position and velocity) of a target body
     //    relative to an observing body, optionally corrected for light
     //    time (planetary aberration) and stellar aberration.
 
-    double dObserverTime;
+    double dObserverTime = {};
     int ret_val = Str2Et( pcObserverTime, dObserverTime );
     if(ret_val != 0)
     {
         return ret_val;
     }
 
-
-
     auto sAberrationCorrection = std::string{"NONE"};
-
     //if ( pcAberrationCorrection != nullptr )
     //{
     //    sAberrationCorrection = pcAberrationCorrection;
     //}
 
 
-    SpiceDouble state[6] = {};
-    //spkezr_c( pcTargetBody, dObserverTime, pcReferenceFrame, sAberrationCorrection.c_str(), pcObserverBody, state, pdLightTime );
-    double pdLightTime;
-    spkezr_c( pcTargetBody, dObserverTime, pcOutputReferenceFrame, sAberrationCorrection.c_str(), pcObserverBody, state, &pdLightTime );
-    if(SpiceHasFailed())
+    // Support body position for rotation, e.g. SUN:
+    auto dSupportPosVec = std::array<double, 3>{};
     {
-        reset_c();
-        return -2;
+        //SpiceDouble state[6] = {};
+        auto state = std::array<double, 6>{};
+        double unused = {};
+        spkezr_c( pcSupportBody, dObserverTime, pcOutputReferenceFrame, sAberrationCorrection.c_str(), pcObserverBody, state.data(), &unused );
+        if(SpiceHasFailed())
+        {
+            reset_c();
+            return -2;
+        }
+
+        dSupportPosVec[0] = state[0];
+        dSupportPosVec[1] = state[1];
+        dSupportPosVec[2] = state[2];
     }
 
-    *pdPosX = state[0];
-    *pdPosY = state[1];
-    *pdPosZ = state[2];
-    *pdVelX = state[3];
-    *pdVelY = state[4];
-    *pdVelZ = state[5];
+    // #1.-position of mars (target) from HERA (Observr) in ECLIPJ2000--> spkezr
+    // Target Position, e.g. Hera:
+    {
+        SpiceDouble state[6] = {};
+        double unused = {};
+        spkezr_c( pcTargetBody, dObserverTime, pcOutputReferenceFrame, sAberrationCorrection.c_str(), pcObserverBody, state, &unused );
+        if(SpiceHasFailed())
+        {
+            reset_c();
+            return -2;
+        }
+
+        pdPosVec[0] = state[0];
+        pdPosVec[1] = state[1];
+        pdPosVec[2] = state[2];
+    }
+
+    // Rotation:
+    {
+        //double dSunPos[3] = {dSunPosX, dSunPosY, dSunPosZ};
+        //double dHeraPos[3] = {*pdPosX, *pdPosY, *pdPosZ};
+        double dSunPosNorm[3] = {};
+        double dHeraPosNorm[3] = {};
+        double dUnused[3] = {};
+
+        // #4.- normalize HERA-SUn vector (uSOL)
+        // uSOL = spice.unorm(sunPos)[0]
+        unorm_c( dSupportPosVec.data(), dSunPosNorm, dUnused );
+
+
+        // #2.-normalize HERA-MARS vector -->uz
+        // uz = spice.unorm(MarsPos)[0]
+        unorm_c( pdPosVec, dHeraPosNorm, dUnused );
+        //double dUZ[3] = {-pdPosVec[0], -pdPosVec[1], -pdPosVec[2]};
+        double dUZ[3] = {dHeraPosNorm[0], dHeraPosNorm[1], dHeraPosNorm[2]};
+        double dUY[3];
+        double dUX[3];
+
+        // #5.- multiply uz x uSOL = vy
+        // vy = spice.vcrss(uz, uSOL)
+        vcrss_c( dUZ, dSunPosNorm, dUY );
+
+        // #6.-normalize vy (=uy)
+        // uy= spice.unorm(vy)[0]
+        double dTmp[3];
+        unorm_c( dUY, dTmp, dUnused );
+        dUY[0] = dTmp[0];
+        dUY[1] = dTmp[1];
+        dUY[2] = dTmp[2];
+
+        // #7.- multiply uz x uy (= vx)
+        //vx = spice.vcrss(uy, uz)
+        vcrss_c( dUY, dUZ, dUX );
+
+
+        // #8.- normalize vx (= ux)
+        // ux = spice.unorm(vx)[0]
+        unorm_c( dUX, dTmp, dUnused );
+        dUX[0] = dTmp[0];
+        dUX[1] = dTmp[1];
+        dUX[2] = dTmp[2];
+
+        // #9.-compose rotation matrix
+        // np.array([ux, uy, uz])
+        // compose:
+        pdRotMat[0] = dUX[0];
+        pdRotMat[1] = dUX[1];
+        pdRotMat[2] = dUX[2];
+
+        pdRotMat[3] = dUY[0];
+        pdRotMat[4] = dUY[1];
+        pdRotMat[5] = dUY[2];
+
+        pdRotMat[6] = dUZ[0];
+        pdRotMat[7] = dUZ[1];
+        pdRotMat[8] = dUZ[2];
+        
+        //// compose + transpose:
+        //pdRotMat[0] = dUX[0];
+        //pdRotMat[1] = dUY[0];
+        //pdRotMat[2] = dUZ[0];
+
+        //pdRotMat[3] = dUX[1];
+        //pdRotMat[4] = dUY[1];
+        //pdRotMat[5] = dUZ[1];
+
+        //pdRotMat[6] = dUX[2];
+        //pdRotMat[7] = dUY[2];
+        //pdRotMat[8] = dUZ[2];
+    }
+
+    // [km] to [m];
+    pdPosVec[0] *= 1000;
+    pdPosVec[1] *= 1000;
+    pdPosVec[2] *= 1000;
+
+    Log(LogLevel::TRACE, std::string{"GetRelState() finished with "} +
+        "pos = (" + std::to_string(pdPosVec[0]) + ", " + std::to_string(pdPosVec[1]) + ", " + std::to_string(pdPosVec[2]) + "), " +
+        "rot = (" + std::to_string(pdRotMat[0]) + ", " + std::to_string(pdRotMat[1]) + ", " + std::to_string(pdRotMat[2]) + ", " +
+        std::to_string(pdRotMat[3]) + ", " + std::to_string(pdRotMat[4]) + ", " + std::to_string(pdRotMat[5]) + ", " +
+        std::to_string(pdRotMat[6]) + ", " + std::to_string(pdRotMat[7]) + ", " + std::to_string(pdRotMat[8]) + ")."
+    );
 
     return 0;
 }
@@ -416,8 +535,11 @@ int GetPositionTransformationMatrix(
     const char* pcFrom,
     const char* pcTo,
     const char* pcDatetime,
-    double* pdRotationMatrix)
+    double* pdRotMat
+)
 {
+    Log(LogLevel::TRACE, "GetPositionTransformationMatrix() called with from = \"" + std::string{pcFrom} + "\", to = \"" + std::string{pcTo} + "\".");
+
     double dEt;
     int ret_val = Str2Et( pcDatetime, dEt );
     if(ret_val != 0)
@@ -425,12 +547,27 @@ int GetPositionTransformationMatrix(
         return ret_val;
     }
 
-    double dTmp[3][3] = {
-        {pdRotationMatrix[0], pdRotationMatrix[1], pdRotationMatrix[2]},
-        {pdRotationMatrix[3], pdRotationMatrix[4], pdRotationMatrix[5]},
-        {pdRotationMatrix[6], pdRotationMatrix[7], pdRotationMatrix[8]},
-    };
-
+    double dTmp[3][3];
     pxform_c( pcFrom, pcTo, dEt, dTmp);
+
+    // reshape:
+    pdRotMat[0] = dTmp[0][0];
+    pdRotMat[1] = dTmp[0][1];
+    pdRotMat[2] = dTmp[0][2];
+
+    pdRotMat[3] = dTmp[1][0];
+    pdRotMat[4] = dTmp[1][1];
+    pdRotMat[5] = dTmp[1][2];
+
+    pdRotMat[6] = dTmp[2][0];
+    pdRotMat[7] = dTmp[2][1];
+    pdRotMat[8] = dTmp[2][2];
+
+    Log(LogLevel::TRACE, std::string{"GetPositionTransformationMatrix() finished with "} +
+        "rot = (" + std::to_string(pdRotMat[0]) + ", " + std::to_string(pdRotMat[1]) + ", " + std::to_string(pdRotMat[2]) + ", " +
+        std::to_string(pdRotMat[3]) + ", " + std::to_string(pdRotMat[4]) + ", " + std::to_string(pdRotMat[5]) + ", " +
+        std::to_string(pdRotMat[6]) + ", " + std::to_string(pdRotMat[7]) + ", " + std::to_string(pdRotMat[8]) + ")."
+    );
+
     return 0;
 }
