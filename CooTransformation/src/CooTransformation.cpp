@@ -293,7 +293,7 @@ int Xyz2LatLonAlt(const char* pcPlanet, double dX, double dY, double dZ, double*
     if (SpiceHasFailed() || nDim != 3)
     {
         reset_c();
-        return -2;
+        return -1;
     }
 
     // Compute flattening coefficient.
@@ -307,7 +307,7 @@ int Xyz2LatLonAlt(const char* pcPlanet, double dX, double dY, double dZ, double*
     if (SpiceHasFailed())
     {
         reset_c();
-        return -1;
+        return -2;
     }
     // Convert to degree and meters
     *pdLon /= rpd_c();
@@ -333,7 +333,7 @@ int LatLonAlt2Xyz(const char* pcPlanet, double dLat, double dLon, double dAlt, d
     if (SpiceHasFailed() || nDim != 3)
     {
         reset_c();
-        return -2;
+        return -1;
     }
 
     // Compute flattening coefficient.
@@ -347,7 +347,7 @@ int LatLonAlt2Xyz(const char* pcPlanet, double dLat, double dLon, double dAlt, d
     if (SpiceHasFailed())
     {
         reset_c();
-        return -1;
+        return -2;
     }
     // Convert to meters
     *pdX = adXyz[0] * 1000.0;
@@ -380,10 +380,10 @@ int GetRelState(
 )
 {
     Log(LogLevel::TRACE, std::string{"GetRelState() called with "} +
-        "target body = \"" + std::string{pcTargetBody} + "\" " +
-        "support body = \"" + std::string{pcSupportBody} + "\" " +
-        "observer body = \"" + std::string{pcObserverBody} + "\" " +
-        "observer time = \"" + std::string{pcObserverTime} + "\" " +
+        "target body = \"" + std::string{pcTargetBody} + "\", " +
+        "support body = \"" + std::string{pcSupportBody} + "\", " +
+        "observer body = \"" + std::string{pcObserverBody} + "\", " +
+        "observer time = \"" + std::string{pcObserverTime} + "\", " +
         "reference frame = \"" + std::string{pcOutputReferenceFrame} + "\"."
     );
 
@@ -395,7 +395,7 @@ int GetRelState(
     int ret_val = Str2Et( pcObserverTime, dObserverTime );
     if(ret_val != 0)
     {
-        return ret_val;
+        return -1;
     }
 
     auto sAberrationCorrection = std::string{"NONE"};
@@ -432,7 +432,7 @@ int GetRelState(
         if(SpiceHasFailed())
         {
             reset_c();
-            return -2;
+            return -3;
         }
 
         pdPosVec[0] = state[0];
@@ -544,7 +544,7 @@ int GetPositionTransformationMatrix(
     int ret_val = Str2Et( pcDatetime, dEt );
     if(ret_val != 0)
     {
-        return ret_val;
+        return -1;
     }
 
     double dTmp[3][3];
