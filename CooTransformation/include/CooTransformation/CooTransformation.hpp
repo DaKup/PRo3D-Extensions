@@ -6,12 +6,12 @@
 extern "C"
 {
     ///**
-    //  * GetDllVersion returns the version number of the DLL.
+    //  * GetAPIVersion returns the version number of the library's API.
     //  * This function can be called, before Init has been executed.
-    //  * @returns dll version number.
+    //  * @returns api version number.
     //  **/
     JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT
-        unsigned int GetDllVersion();
+        unsigned int GetAPIVersion();
 
     /**
      * TODO: change log directory to a log file path

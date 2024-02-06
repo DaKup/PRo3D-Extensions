@@ -177,11 +177,11 @@ int Str2Et( const std::string& rsTimestamp, double& rdEt )
 
 
 JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT
-unsigned int GetDllVersion()
+unsigned int GetAPIVersion()
 {
-    Log(LogLevel::TRACE, "GetDllVersion() called.");
-    Log(LogLevel::TRACE, "GetDllVersion() finished.");
-    return 3;
+    Log(LogLevel::TRACE, "GetAPIVersion() called.");
+    Log(LogLevel::TRACE, "GetAPIVersion() finished.");
+    return 4;
 }
 
 
