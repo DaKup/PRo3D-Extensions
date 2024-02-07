@@ -112,7 +112,7 @@ extern "C"
      * @param[in]   pcObserverBody          Case-insensitive name of a celestial body (eg. "mars" or "EARTH")
      * @param[in]   pcObserverDatetime      Datetime string (e.g. "2026-12-03 08:15:00.00")
      * @param[in]   pcOutputReferenceFrame  Reference frame (e.g. "J2000")
-     * @param[out]  pdPosVec                Relative position in meters
+     * @param[out]  pdPosVec                3x1 relative position in meters
      * @param[out]  pdRotMat                3x3 rotation matrix
      * @return
      *  0   Success
