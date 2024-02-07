@@ -34,8 +34,8 @@ static std::string LogLevelStr[] =
 {
     "Error",
     "Warning",
-    "Debug",
     "Info",
+    "Debug",
     "Trace"
 };
 

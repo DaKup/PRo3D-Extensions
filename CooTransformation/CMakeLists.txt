@@ -15,7 +15,7 @@ generate_export_header(CooTransformation PREFIX_NAME  JR_PRO3D_EXTENSIONS_ EXPOR
 target_include_directories(CooTransformation PRIVATE include ${CSPICE_INCLUDE_DIR})
 target_include_directories(CooTransformation PUBLIC include ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(CooTransformation PRIVATE ${CSPICE_LIBRARY_RELEASE})
-set_target_properties(CooTransformation PROPERTIES CXX_STANDARD 17)
+set_target_properties(CooTransformation PROPERTIES CXX_STANDARD 20)
 
 
 install(TARGETS CooTransformation   RUNTIME DESTINATION bin COMPONENT runtime
@@ -23,8 +23,3 @@ install(TARGETS CooTransformation   RUNTIME DESTINATION bin COMPONENT runtime
                                     ARCHIVE DESTINATION lib COMPONENT develop)
 
 install(FILES ${CooTransformation_HEADERS} ${CMAKE_CURRENT_BINARY_DIR}/CooTransformation/CooTransformationExport.hpp DESTINATION include/CooTransformation COMPONENT develop)
-
-
-# add_executable(CooTransformationTest test/CooTransformationTest.cpp)
-# target_link_libraries(CooTransformationTest PRIVATE CooTransformation)
-# set_target_properties(CooTransformationTest PROPERTIES CXX_STANDARD 17)
