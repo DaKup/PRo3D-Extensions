@@ -26,7 +26,7 @@ extern "C"
      * 3: Debug
      * 4: Trace
      * @param[in] bConsoleLog       Enable or disable logging to stderr.
-     * @param[in] pcLogFile         Path to log file. Can be NULL.
+     * @param[in] pcLogFile         Optional path to log file. Can be NULL.
      * @param[in] nConsoleLogLevel  Console log level value [0, 5].
      * @param[in] nFileLogLevel     File log level value [0, 5].
      * @return
@@ -71,7 +71,7 @@ extern "C"
     /**
      * @brief Transform planet-centered cartesian coordinates into planetographic coordinates.
      *
-     * @param[in]   pcPlanet    case-insensitive name of planet (eg. "mars" or "EARTH").
+     * @param[in]   pcPlanet    Case-insensitive name of planet (eg. "mars" or "EARTH").
      * @param[in]   dX          X-coordinate in meters.
      * @param[in]   dY          Y-coordinate in meters.
      * @param[in]   dZ          Z-coordinate in meters.
@@ -79,55 +79,70 @@ extern "C"
      * @param[out]  pdLon       Longitude in degrees w.r.t. the referenced spheroid.
      * @param[out]  pdAlt       Altitude in meters w.r.t. the referenced spheroid.
      * @return
-     *  0   Sucess
-     * -2   Failed to lookup radii of the planet.
-     * -3   Failed to transform coordinates.
+     *  0   Success
+     * -2   Failed to lookup radii of the planet
+     * -3   Failed to transform coordinates
      */
     JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT
     int Xyz2LatLonAlt(const char *pcPlanet, double dX, double dY, double dZ, double *pdLat, double *pdLon, double *pdAlt);
 
-    /** LatLonAlt2Xyz is the inverse of Xyz2LatLonAlt.
-     * Before this function can be called, Init has to be executed.
-     * @param[in] pcPlanet: case-insensitive name of planet (eg. "mars" or "EARTH").
-     * @param[in] dLat, dLon, dAlt: latitude, longitude and altitude with respect to the reference spheroid.
-     * @param[out] pdX, pdY, pdZ: cartesian coordinates.
-     * @returns error code.
-     **/
+    /**
+     * @brief Transform planetographic coordinates to planet-centered cartesian coordinates.
+     *
+     * @param[in]   pcPlanet    Case-insensitive name of planet (eg. "mars" or "EARTH")
+     * @param[in]   dLat        Latitude in degrees w.r.t. the referenced spheroid
+     * @param[in]   dLon        Longitude in degrees w.r.t. the referenced spheroid
+     * @param[in]   dAlt        Altitude in meters w.r.t. the referenced spheroid
+     * @param[out]  pdX         X-coordinate in meters
+     * @param[out]  pdY         Y-coordinate in meters
+     * @param[out]  pdZ         Z-coordinate in meters
+     * @return
+     *  0   Success
+     * -1   Failed to lookup radii for the planet
+     * -2   Failed to transform coordinates
+     */
     JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT
     int LatLonAlt2Xyz(const char *pcPlanet, double dLat, double dLon, double dAlt, double *pdX, double *pdY, double *pdZ);
 
     /**
-     * TODO: Add proper description.
-     * For more details see https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/cspice/spkezr_c.html
+     * @brief Get the relative position and rotation of a celestial body.
      *
-     * @param pcTargetBody
-     * @param pcReferenceFrame
-     * @param pcAberrationCorrection
-     * @param pcObserverBody
-     * @param dObserverTime
-     * @param pdLightTime
-     * @param pdPosX
-     * @param pdPosY
-     * @param pdPosZ
-     * @param pdVelX
-     * @param pdVelY
-     * @param pdVelZ
-     * @return error code
+     * @param[in]   pcTargetBody            Case-insensitive name of a celestial body (eg. "mars" or "EARTH")
+     * @param[in]   pcSupportBody           Case-insensitive name of a celestial body (eg. "mars" or "EARTH")
+     * @param[in]   pcObserverBody          Case-insensitive name of a celestial body (eg. "mars" or "EARTH")
+     * @param[in]   pcObserverDatetime      Datetime string (e.g. "2026-12-03 08:15:00.00")
+     * @param[in]   pcOutputReferenceFrame  Reference frame (e.g. "J2000")
+     * @param[out]  pdPosVec                Relative position in meters
+     * @param[out]  pdRotMat                3x3 rotation matrix
+     * @return
+     *  0   Success
+     * -1   Failed to convert datetime string format
+     * -2   Failed to get relative state of support body w.r.t. observer body
+     * -3   Failed to get relative state of target body w.r.t. observer body
      */
     JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT
     int GetRelState(
         const char *pcTargetBody,
-        const char *pcSunBody,
-        // const char* pcAberrationCorrection,
+        const char *pcSupportBody,
         const char *pcObserverBody,
         const char *pcObserverDatetime,
         const char *pcOutputReferenceFrame,
-        // double dObserverTime,
-        // double* pdLightTime,
         double *pdPosVec,
         double *pdRotMat);
 
-    // todo: https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/cspice/pxform_c.html
+    /**
+     * @brief Return the matrix that transforms position vectors from one
+     * specified frame to another at a specified epoch.
+     * See also https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/cspice/pxform_c.html
+     *
+     * @param[in]   pcFrom      Name of the frame to transform from (e.g. "IAU_EARTH")
+     * @param[in]   pcTo        Name of the frame to transform to (e.g. "J2000")
+     * @param[in]   pcDatetime  Datetime string (e.g. "2026-12-03 08:15:00.00")
+     * @param[out]  pdRotMat    3x3 rotation matrix
+     * @return
+     *  0   Success
+     * -1   Failed to convert datetime string format
+     */
     JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT
     int GetPositionTransformationMatrix(
         const char *pcFrom,
