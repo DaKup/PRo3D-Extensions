@@ -2,6 +2,10 @@
 
 https://github.com/vrvis/PRo3D
 
+## Download Pre-Build Binaries
+
+https://github.com/DaKup/PRo3D-Extensions/releases
+
 ## Build-Instructions
 
 ```bash
@@ -14,6 +18,9 @@ git clone https://github.com/DaKup/PRo3D-Extensions.git
 
 ```bash
 cmake --preset windows-configure
+```
+
+```bash
 cmake --build --preset windows-build
 ```
 
