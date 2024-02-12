@@ -48,13 +48,10 @@ static std::unique_ptr<std::ofstream> s_logfile;
 
 static void Log(LogLevel eLogType, const std::string& rsMsg)
 {
-    //std::cout << "Log() called with eLogType = " << std::to_string( static_cast<int>( eLogType ) ) << ", console log level = " << std::to_string( s_nConsoleLogLevel ) << std::endl;
-
     std::string sMsg = std::string("[") + LogLevelStr[static_cast<int>(eLogType)] + "]: " + rsMsg;
 
     if (s_bLogConsole && s_nConsoleLogLevel >= static_cast<int>(eLogType))
     {
-        //std::cout << "CooTransformation: " << sMsg << std::endl;
         std::cerr << "CooTransformation: " << sMsg << std::endl;
     }
     if (s_logfile && s_logfile->is_open() && s_nFileLogLevel >= static_cast<int>(eLogType))
@@ -81,15 +78,15 @@ static bool SpiceHasFailed()
 
 
 
-static void SetSpiceErrorHandling(const char* szAction, const char* szDevice, const char* szFormat)
+static void SetSpiceErrorHandling(const std::string& rsAction, const std::string& rsDevice, const std::string& rsFormat)
 {
     SpiceChar szErrorAction[SPICE_ERROR_LMSGLN];
     SpiceChar szErrorDevice[SPICE_ERROR_LMSGLN];
     SpiceChar szErrorFormat[SPICE_ERROR_LMSGLN];
 
-    strcpy(szErrorAction, szAction);
-    strcpy(szErrorDevice, szDevice);
-    strcpy(szErrorFormat, szFormat);
+    strcpy(szErrorAction, rsAction.c_str());
+    strcpy(szErrorDevice, rsDevice.c_str());
+    strcpy(szErrorFormat, rsFormat.c_str());
 
     // Set the default error action
     erract_c(
@@ -114,45 +111,6 @@ static void SetSpiceErrorHandling(const char* szAction, const char* szDevice, co
 }   // SetSpiceErrorHandling()
 
 
-static bool IsDir(const std::string& rsDir)
-{
-    // to stay compatible with c++11 and not require boost
-
-    struct stat oStat;
-    if (!stat(rsDir.c_str(), &oStat) && oStat.st_mode & S_IFDIR)
-    {
-        return true;
-    }
-    return false;
-}
-
-
-static int LoadSpiceKernel(const std::string& pcSpiceKernelPath)
-{
-    Log(LogLevel::TRACE, "LoadSpiceKernel() called with spice kernel path = \"" + pcSpiceKernelPath + "\".");
-    if (!pcSpiceKernelPath.empty())
-    {
-        furnsh_c(pcSpiceKernelPath.c_str());
-        if (SpiceHasFailed())
-        {
-            char acSMsg[SPICE_ERROR_LMSGLN]; // short message
-            char acXMsg[SPICE_ERROR_LMSGLN]; // explanation of short message
-            getmsg_c("SHORT", SPICE_ERROR_LMSGLN, acSMsg);
-            getmsg_c("EXPLAIN", SPICE_ERROR_LMSGLN, acXMsg);
-            reset_c();
-            Log(LogLevel::WARNING,
-                "Could not load CSPICE: \"" + pcSpiceKernelPath + "\" (" + acSMsg + ": " + acXMsg + ")!");
-            return -1;
-        }
-        else
-        {
-            Log(LogLevel::INFO, "Loaded CSpice Kernel \"" + pcSpiceKernelPath + "\".");
-        }
-    }
-    return 0;
-}
-
-
 JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT
 int Str2Et( const std::string& rsTimestamp, double& rdEt )
 {
@@ -166,7 +124,7 @@ int Str2Et( const std::string& rsTimestamp, double& rdEt )
         getmsg_c("SHORT", SPICE_ERROR_LMSGLN, acSMsg);
         getmsg_c("EXPLAIN", SPICE_ERROR_LMSGLN, acXMsg);
         reset_c();
-        Log(LogLevel::WARNING,
+        Log(LogLevel::ERROR,
             std::string("Str2Et() failed with error: \"") + acSMsg + "\": \"" + acXMsg + "\"");
         return -1;
     }
@@ -181,7 +139,7 @@ unsigned int GetAPIVersion()
 {
     Log(LogLevel::TRACE, "GetAPIVersion() called.");
     Log(LogLevel::TRACE, "GetAPIVersion() finished.");
-    return 4;
+    return 5;
 }
 
 
@@ -237,6 +195,8 @@ int Init(bool bConsoleLog, const char* pcLogFile, int nConsoleLogLevel, int nFil
 
     // Set error handling system of CSPICE to continue if error occurs
     SetSpiceErrorHandling("RETURN", "NULL", "SHORT, EXPLAIN");
+
+    Log(LogLevel::TRACE, "Init() finished.");
     return 0;
 }
 
@@ -245,7 +205,37 @@ int Init(bool bConsoleLog, const char* pcLogFile, int nConsoleLogLevel, int nFil
 JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT
 int AddSpiceKernel(const char* pcKernelPath)
 {
-    return LoadSpiceKernel(pcKernelPath);
+    if( !pcKernelPath )
+    {
+        Log(LogLevel::ERROR, "AddSpiceKernel() called with nullptr arguments." );
+        return -1;
+    }
+
+    std::string pcSpiceKernelPath = pcKernelPath;
+
+    Log(LogLevel::TRACE, "AddSpiceKernel() called with spice kernel path = \"" + pcSpiceKernelPath + "\".");
+    if (!pcSpiceKernelPath.empty())
+    {
+        furnsh_c(pcSpiceKernelPath.c_str());
+        if (SpiceHasFailed())
+        {
+            char acSMsg[SPICE_ERROR_LMSGLN]; // short message
+            char acXMsg[SPICE_ERROR_LMSGLN]; // explanation of short message
+            getmsg_c("SHORT", SPICE_ERROR_LMSGLN, acSMsg);
+            getmsg_c("EXPLAIN", SPICE_ERROR_LMSGLN, acXMsg);
+            reset_c();
+            Log(LogLevel::WARNING,
+                "Could not load CSPICE: \"" + pcSpiceKernelPath + "\" (" + acSMsg + ": " + acXMsg + ")!");
+            return -2;
+        }
+        else
+        {
+            Log(LogLevel::INFO, "Loaded CSpice Kernel \"" + pcSpiceKernelPath + "\".");
+        }
+    }
+
+    Log(LogLevel::TRACE, "AddSpiceKernel() finished.");
+    return 0;
 }
 
 
@@ -259,8 +249,14 @@ void DeInit()
 JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT
 int Xyz2LatLonRad(double dX, double dY, double dZ, double* pdLat, double* pdLon, double* pdRad)
 {
+    if( !pdLat || !pdLon || !pdRad )
+    {
+        Log(LogLevel::ERROR, "Xyz2LatLonRad() called with nullptr arguments." );
+        return -1;
+    }
+
     Log(LogLevel::TRACE, "Xyz2LatLonRad() called with xyz = (" + std::to_string(dX) + ", " + std::to_string(dY) + ", " + std::to_string(dZ) + ")");
-    
+
     double adXyz[3] = { dX * 0.001, dY * 0.001, dZ * 0.001 };
     reclat_c(adXyz, pdRad, pdLon, pdLat);
     if (SpiceHasFailed())
@@ -282,6 +278,12 @@ int Xyz2LatLonRad(double dX, double dY, double dZ, double* pdLat, double* pdLon,
 JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT
 int Xyz2LatLonAlt(const char* pcPlanet, double dX, double dY, double dZ, double* pdLat, double* pdLon, double* pdAlt)
 {
+    if( !pcPlanet || !pdLat || !pdLon || !pdAlt )
+    {
+        Log(LogLevel::ERROR, "Xyz2LatLonAlt() called with nullptr arguments." );
+        return -1;
+    }
+
     Log(LogLevel::TRACE, "Xyz2LatLonAlt() called with planet = " + std::string{pcPlanet} + ", xyz = (" + std::to_string(dX) + ", " + std::to_string(dY) + ", " + std::to_string(dZ) + ")");
 
     // Look up the radii for the planet. Although we omit it here, we could first call badkpv_c
@@ -293,7 +295,7 @@ int Xyz2LatLonAlt(const char* pcPlanet, double dX, double dY, double dZ, double*
     if (SpiceHasFailed() || nDim != 3)
     {
         reset_c();
-        return -1;
+        return -2;
     }
 
     // Compute flattening coefficient.
@@ -307,7 +309,7 @@ int Xyz2LatLonAlt(const char* pcPlanet, double dX, double dY, double dZ, double*
     if (SpiceHasFailed())
     {
         reset_c();
-        return -2;
+        return -3;
     }
     // Convert to degree and meters
     *pdLon /= rpd_c();
@@ -323,6 +325,12 @@ int Xyz2LatLonAlt(const char* pcPlanet, double dX, double dY, double dZ, double*
 JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT
 int LatLonAlt2Xyz(const char* pcPlanet, double dLat, double dLon, double dAlt, double* pdX, double* pdY, double* pdZ)
 {
+    if( !pcPlanet || !pdX || !pdY || !pdZ )
+    {
+        Log(LogLevel::ERROR, "LatLonAlt2Xyz() called with nullptr arguments." );
+        return -1;
+    }
+
     Log(LogLevel::TRACE, "LatLonAlt2Xyz() called with planet = " + std::string{pcPlanet} + ", xyz = (" + std::to_string(dLat) + ", " + std::to_string(dLon) + ", " + std::to_string(dAlt) + ")");
     // Look up the radii for the planet. Although we omit it here, we could first call badkpv_c
     // to make sure the variable BODY?99_RADII has three elements and numeric data type.
@@ -333,7 +341,7 @@ int LatLonAlt2Xyz(const char* pcPlanet, double dLat, double dLon, double dAlt, d
     if (SpiceHasFailed() || nDim != 3)
     {
         reset_c();
-        return -1;
+        return -2;
     }
 
     // Compute flattening coefficient.
@@ -347,7 +355,7 @@ int LatLonAlt2Xyz(const char* pcPlanet, double dLat, double dLon, double dAlt, d
     if (SpiceHasFailed())
     {
         reset_c();
-        return -2;
+        return -3;
     }
     // Convert to meters
     *pdX = adXyz[0] * 1000.0;
@@ -363,22 +371,19 @@ JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT
 int GetRelState(
     const char* pcTargetBody,
     const char* pcSupportBody,
-    //const char* pcAberrationCorrection,
     const char* pcObserverBody,
     const char* pcObserverTime,
     const char* pcOutputReferenceFrame,
-    //double dObserverTime,
-    //double* pdLightTime,
-    //double* pdPosX,
-    //double* pdPosY,
-    //double* pdPosZ,
     double* pdPosVec,
-    //double* pdVelX,
-    //double* pdVelY,
-    //double* pdVelZ
     double* pdRotMat
 )
 {
+    if( !pcTargetBody || !pcSupportBody || !pcObserverBody || !pcObserverTime || !pcOutputReferenceFrame || !pdPosVec || !pdRotMat )
+    {
+        Log(LogLevel::ERROR, "GetRelState() called with nullptr arguments." );
+        return -1;
+    }
+
     Log(LogLevel::TRACE, std::string{"GetRelState() called with "} +
         "target body = \"" + std::string{pcTargetBody} + "\", " +
         "support body = \"" + std::string{pcSupportBody} + "\", " +
@@ -395,7 +400,7 @@ int GetRelState(
     int ret_val = Str2Et( pcObserverTime, dObserverTime );
     if(ret_val != 0)
     {
-        return -1;
+        return -2;
     }
 
     auto sAberrationCorrection = std::string{"NONE"};
@@ -415,7 +420,7 @@ int GetRelState(
         if(SpiceHasFailed())
         {
             reset_c();
-            return -2;
+            return -3;
         }
 
         dSupportPosVec[0] = state[0];
@@ -432,7 +437,7 @@ int GetRelState(
         if(SpiceHasFailed())
         {
             reset_c();
-            return -3;
+            return -4;
         }
 
         pdPosVec[0] = state[0];
@@ -499,7 +504,7 @@ int GetRelState(
         pdRotMat[6] = dUZ[0];
         pdRotMat[7] = dUZ[1];
         pdRotMat[8] = dUZ[2];
-        
+
         //// compose + transpose:
         //pdRotMat[0] = dUX[0];
         //pdRotMat[1] = dUY[0];
@@ -538,13 +543,19 @@ int GetPositionTransformationMatrix(
     double* pdRotMat
 )
 {
+    if( !pcFrom || !pcTo || !pcDatetime || !pdRotMat )
+    {
+        Log(LogLevel::ERROR, "GetPositionTransformationMatrix() called with nullptr arguments." );
+        return -1;
+    }
+
     Log(LogLevel::TRACE, "GetPositionTransformationMatrix() called with from = \"" + std::string{pcFrom} + "\", to = \"" + std::string{pcTo} + "\".");
 
     double dEt;
     int ret_val = Str2Et( pcDatetime, dEt );
     if(ret_val != 0)
     {
-        return -1;
+        return -2;
     }
 
     double dTmp[3][3];

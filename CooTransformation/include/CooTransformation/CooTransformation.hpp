@@ -3,6 +3,16 @@
 
 #include <CooTransformation/CooTransformationExport.hpp>
 
+
+/*
+* API changelog:
+* 
+* 1-4:
+*   - baseline
+* 5:
+    - introduced error code -1 (=illegal nullptr arguments) for most functions.
+*/
+
 extern "C"
 {
     /**
@@ -47,7 +57,8 @@ extern "C"
      * @param[in] pcSpiceKernelFile Path to a SPICE kernel file. This can be a meta-kernel file as well.
      * @return
      *  0   Success
-     *  -1  Failed to load the kernel
+     *  -1  Failed to run function. Argument(s) must not be NULL.
+     *  -2  Failed to load the kernel
      */
     JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT
     int AddSpiceKernel(const char *pcSpiceKernelFile);
@@ -63,7 +74,8 @@ extern "C"
      * @param[out]  pdRad   Radius in meters.
      * @return
      *  0   Success
-     * -1   Failed to transform coordinates.
+     * -1   Failed to run function. Argument(s) must not be NULL.
+     * -2   Failed to transform coordinates.
      */
     JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT
     int Xyz2LatLonRad(double dX, double dY, double dZ, double *pdLat, double *pdLon, double *pdRad);
@@ -80,6 +92,7 @@ extern "C"
      * @param[out]  pdAlt       Altitude in meters w.r.t. the referenced spheroid.
      * @return
      *  0   Success
+     * -1   Failed to run function. Argument(s) must not be NULL.
      * -2   Failed to lookup radii of the planet
      * -3   Failed to transform coordinates
      */
@@ -98,27 +111,31 @@ extern "C"
      * @param[out]  pdZ         Z-coordinate in meters
      * @return
      *  0   Success
-     * -1   Failed to lookup radii for the planet
-     * -2   Failed to transform coordinates
+     * -1   Failed to run function. Argument(s) must not be NULL.
+     * -2   Failed to lookup radii for the planet
+     * -3   Failed to transform coordinates
      */
     JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT
     int LatLonAlt2Xyz(const char *pcPlanet, double dLat, double dLon, double dAlt, double *pdX, double *pdY, double *pdZ);
 
     /**
      * @brief Get the relative position and rotation of a celestial body.
-     *
+     * 
+     * Calculates the relative position and rotation from an observer to a target.
+     * The support body is used as a second direction
      * @param[in]   pcTargetBody            Case-insensitive name of a celestial body (eg. "mars" or "EARTH")
      * @param[in]   pcSupportBody           Case-insensitive name of a celestial body (eg. "mars" or "EARTH")
      * @param[in]   pcObserverBody          Case-insensitive name of a celestial body (eg. "mars" or "EARTH")
      * @param[in]   pcObserverDatetime      Datetime string (e.g. "2026-12-03 08:15:00.00")
      * @param[in]   pcOutputReferenceFrame  Reference frame (e.g. "J2000")
-     * @param[out]  pdPosVec                3x1 relative position in meters
+     * @param[out]  pdPosVec                3x1 position in meters
      * @param[out]  pdRotMat                3x3 rotation matrix
      * @return
      *  0   Success
-     * -1   Failed to convert datetime string format
-     * -2   Failed to get relative state of support body w.r.t. observer body
-     * -3   Failed to get relative state of target body w.r.t. observer body
+     * -1   Failed to run function. Argument(s) must not be NULL.
+     * -2   Failed to convert datetime string format
+     * -3   Failed to get relative state of support body w.r.t. observer body
+     * -4   Failed to get relative state of target body w.r.t. observer body
      */
     JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT
     int GetRelState(
@@ -141,7 +158,8 @@ extern "C"
      * @param[out]  pdRotMat    3x3 rotation matrix
      * @return
      *  0   Success
-     * -1   Failed to convert datetime string format
+     * -1   Failed to run function. Argument(s) must not be NULL.
+     * -2   Failed to convert datetime string format
      */
     JR_PRO3D_EXTENSIONS_COOTRANSFORMATION_EXPORT
     int GetPositionTransformationMatrix(
